@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "VetCarePro",
-    "slug": "VetCarePro",
+    "name": "Amipets",
+    "slug": "amipets",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
