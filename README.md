@@ -228,42 +228,6 @@ Amipets/
 
 ---
 
-## 🪝 Cumplimiento de Hooks Obligatorios
-
-| Hook | Ubicación / Caso de Uso | Propósito en la Aplicación |
-| :--- | :--- | :--- |
-| **`useState`** | `CreateRequestScreen`, `WelcomeScreen`, `RequestsScreen`, `RequestDetailScreen`, `SettingsScreen`, `FormField` | Manejo reactivo de campos de formulario, query de búsqueda, filtros seleccionados, modales de confirmación y estados de visibilidad. |
-| **`useEffect`** | `RequestsProvider`, `RequestsScreen`, `CreateRequestScreen`, `ConfirmDialog`, `ToastContext` | Simulación de carga inicial de datos con delay (`setTimeout`), sincronización de filtros desde el Dashboard, temporizador de reloj de registro en vivo y disparadores de animaciones. |
-| **`useReducer` + `Context`** | `src/store/requestsReducer.ts` y `src/context/RequestsProvider.tsx` | Gestión centralizada del estado de las solicitudes con Reducer puro, acciones tipadas y provisión a través de Context API para operaciones CRUD completas en memoria a nivel global. |
-| **`useMemo`** | `RequestsScreen`, `HomeScreen`, `RequestsProvider` | Memorización del filtrado y ordenamiento de solicitudes, recálculo optimizado de contadores por estado y valores de contexto. |
-| **`useCallback`** | `RequestsProvider`, `ToastContext` | Estabilización de referencias de funciones despachadoras (`createRequest`, `updateRequest`, `deleteRequest`, `changeStatus`). |
-| **`useRef`** | `CreateRequestScreen`, `WelcomeScreen`, `ConfirmDialog`, `ToastContext` | Manejo de foco entre inputs secuenciales (`returnKeyType="next"`) y referencias de animación (`Animated.Value`). |
-
----
-
-## 🎨 Principios de Diseño UI/UX Aplicados
-
-- **Diseño Moderno y Atractivo:** Paleta de colores cálida, humanizada y clínica (tonos salvia, lavanda, rosa suave y cielo) combinada con tipografías Google Fonts (*Poppins* y detalle manuscrito en *Caveat*).
-- **Jerarquía Visual Clara:** Títulos legibles, tarjetas con sombras suaves calculadas por plataforma (`elevation` en Android y `shadowOffset` en iOS/Web).
-- **Microinteracciones:** Componente `PressableScale` que genera una respuesta táctil elástica al pulsar botones y tarjetas.
-- **Validaciones Visibles:** Mensajes de error específicos con icono de alerta colocados exactamente debajo de cada input defectuoso.
-- **Iconografía Coherente:** Iconos representativos de `@expo/vector-icons` (Ionicons) para cada tipo de servicio, estado y nivel de prioridad.
-- **Confirmación Destructiva:** Modal de confirmación con énfasis visual rojo antes de eliminar cualquier registro.
-- **Accesibilidad:** Soporte para lectores de pantalla con atributos `accessibilityRole`, `accessibilityLabel`, `accessibilityHint` y `accessibilityLiveRegion`.
-
----
-
-## 📊 Cumplimiento de Criterios de Evaluación según Rúbrica
-
-| Criterio de Evaluación | Requisitos Solicitados | Implementación Técnica en Amipets |
-| :--- | :--- | :--- |
-| **1. Configuración y ejecución en React Native** | Proyecto base configurado correctamente, ejecución limpia sin errores de compilación ni ejecución en Android, iOS o Web. | Configuración con Expo SDK y React Native. Tipado estricto con TypeScript (`npx tsc --noEmit` con 0 errores). Configuración completa de scripts npm y guías de ejecución multiplataforma. |
-| **2. Estructura del proyecto y organización** | Separación lógica de carpetas, componentes reutilizables, modularización y buenas prácticas de arquitectura. | Arquitectura modular en capas: `models/`, `store/` (acciones y reducer puro), `context/` (Context API desacoplada), `components/` (atómicos y reutilizables), `screens/`, `navigation/`, `theme/` y `utils/`. Cohesión alta y acoplamiento mínimo. |
-| **3. Diseño de interfaces móviles** | Flujo completo de navegación, formularios intuitivos, interfaces consistentes y adaptadas al entorno móvil. | Navegación combinada con React Navigation (Bottom Tabs de 4 secciones: *Inicio, Solicitudes, Calendario, Ajustes* y Stack raíz para *Detalle y Crear/Editar*). Formularios con validación en tiempo real y estados vacíos (*EmptyState*). |
-| **4. Experiencia de usuario (UI/UX) y estilos** | Jerarquía visual clara, contraste accesible (WCAG AA), microinteracciones, retroalimentación al usuario y confirmaciones críticas. | Paleta curada con separación de familias cromáticas (estados sólidos vs. prioridades en escala de calor), contraste WCAG AA (≥ 4.5:1), áreas táctiles ≥ 44px, toasts con acción "Deshacer", diálogo modal obligatorio antes de eliminar y chips de metadatos. |
-
----
-
 ## 📄 Licencia
 
 Este proyecto fue desarrollado con fines educativos para la Escuela de Tecnología de IDAT.
