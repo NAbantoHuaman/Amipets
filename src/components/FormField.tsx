@@ -10,11 +10,10 @@ interface Props extends TextInputProps {
   error?: string;
   hint?: string;
   required?: boolean;
-  /** Muestra contador de caracteres cuando se define maxLength. */
+
   showCounter?: boolean;
 }
 
-/** Campo de formulario con etiqueta, ícono, error debajo y contador. */
 export const FormField = forwardRef<any, Props>(function FormField(
   { label, icon, error, hint, required, showCounter, multiline, maxLength, value = '', style, onFocus, onBlur, ...rest },
   ref,

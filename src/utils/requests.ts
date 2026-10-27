@@ -2,18 +2,10 @@ import { Priority, RequestStatus, VeterinaryRequest } from '../models/request';
 import { PRIORITY_META, SERVICE_META, SPECIES_META, STATUS_META } from './requestMeta';
 import { normalizePhone } from './validation';
 
-/** Peso explícito de prioridad (no se compara alfabéticamente). */
 export const priorityWeight = (p: Priority) => PRIORITY_META[p].order;
 
-/** Las solicitudes activas van antes que las finalizadas. */
 const statusWeight = (s: RequestStatus) => (s === 'FINALIZADO' ? 1 : 0);
 
-/**
- * Orden de atención:
- * 1. Activas (pendientes / en atención) antes que finalizadas.
- * 2. Prioridad: urgente → alta → media → baja.
- * 3. Dentro de la misma prioridad, la más antigua primero (orden de llegada).
- */
 export function sortByAttentionOrder(list: VeterinaryRequest[]): VeterinaryRequest[] {
   return [...list].sort((a, b) => {
     const byStatus = statusWeight(a.estado) - statusWeight(b.estado);
@@ -24,7 +16,6 @@ export function sortByAttentionOrder(list: VeterinaryRequest[]): VeterinaryReque
   });
 }
 
-/** Más recientes primero (para "Últimas atenciones"). */
 export function sortByNewest(list: VeterinaryRequest[]): VeterinaryRequest[] {
   return [...list].sort(
     (a, b) => new Date(b.fechaRegistro).getTime() - new Date(a.fechaRegistro).getTime(),
@@ -44,7 +35,6 @@ export interface RequestFilters {
   priority: Priority | 'TODAS';
 }
 
-/** Búsqueda por mascota, cliente o teléfono + filtros de estado y prioridad. */
 export function filterRequests(list: VeterinaryRequest[], filters: RequestFilters): VeterinaryRequest[] {
   const q = normalize(filters.query);
   const qPhone = normalizePhone(filters.query);
@@ -70,14 +60,11 @@ export function countByStatus(list: VeterinaryRequest[]): Record<RequestStatus, 
   );
 }
 
-/** Urgentes que aún no se han finalizado. */
 export const activeUrgent = (list: VeterinaryRequest[]) =>
   list.filter((r) => r.prioridad === 'URGENTE' && r.estado !== 'FINALIZADO');
 
-/** Código corto legible a partir del id: #AP-4F2A */
 export const shortCode = (id: string) => `#AP-${id.slice(-4).toUpperCase()}`;
 
-/** Texto accesible que resume una solicitud para lectores de pantalla. */
 export function describeRequest(r: VeterinaryRequest): string {
   return [
     r.mascotaNombre,

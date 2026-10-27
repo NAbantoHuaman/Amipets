@@ -51,12 +51,10 @@ export function SettingsScreen() {
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
 
-  // Tarifario editable por el Doctor / Administrador
   const [servicesList, setServicesList] = useState<ServicePriceItem[]>(DEFAULT_PRICES);
   const [editingService, setEditingService] = useState<ServicePriceItem | null>(null);
   const [newPriceText, setNewPriceText] = useState('');
 
-  // Preferencias de alertas de la aplicación local
   const [notifyUrgent, setNotifyUrgent] = useState(true);
   const [soundAlerts, setSoundAlerts] = useState(true);
   const [vaccineReminders, setVaccineReminders] = useState(true);
@@ -95,7 +93,6 @@ export function SettingsScreen() {
     setEditingService(null);
   };
 
-  // Pacientes reales registrados a partir de las solicitudes creadas
   const registeredPatients = useMemo(() => {
     const map = new Map<string, { name: string; species?: Species }>();
     for (const r of requests) {
@@ -121,7 +118,6 @@ export function SettingsScreen() {
           Ajustes de Clínica
         </Text>
 
-        {/* Tarjeta de perfil del Doctor Director y Dueño */}
         <View style={styles.profileCard}>
           <View style={styles.avatarWrap}>
             <Ionicons name="medical" size={28} color={colors.white} />
@@ -139,7 +135,6 @@ export function SettingsScreen() {
           </View>
         </View>
 
-        {/* Pacientes Registrados Reales */}
         <View style={styles.section}>
           <SectionHeader title="Pacientes registrados" />
           {registeredPatients.length > 0 ? (
@@ -164,7 +159,6 @@ export function SettingsScreen() {
           )}
         </View>
 
-        {/* Tarifario de Servicios Médicos Editable */}
         <View style={styles.section}>
           <SectionHeader
             title="Tarifario de servicios médicos"
@@ -195,7 +189,6 @@ export function SettingsScreen() {
           </View>
         </View>
 
-        {/* Información de la Sede y Consultorio */}
         <View style={styles.section}>
           <SectionHeader title="Sede y atención médica" />
           <View style={styles.card}>
@@ -229,7 +222,6 @@ export function SettingsScreen() {
           </View>
         </View>
 
-        {/* Preferencias de Alertas y Notificaciones locales */}
         <View style={styles.section}>
           <SectionHeader title="Preferencias de la aplicación" />
           <View style={styles.card}>
@@ -278,7 +270,6 @@ export function SettingsScreen() {
           </View>
         </View>
 
-        {/* Acciones de cuenta y sistema */}
         <View style={{ gap: spacing.sm, marginTop: spacing.xs }}>
           <PressableScale
             onPress={() => setConfirmClear(true)}
@@ -305,7 +296,6 @@ export function SettingsScreen() {
         </Text>
       </ScrollView>
 
-      {/* Modal para Editar Tarifa de Servicio */}
       <Modal
         visible={editingService !== null}
         transparent={true}
@@ -365,7 +355,6 @@ export function SettingsScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Confirmación para Vaciar Registros */}
       <ConfirmDialog
         visible={confirmClear}
         title="¿Vaciar todas las solicitudes?"
@@ -378,7 +367,6 @@ export function SettingsScreen() {
         onConfirm={handleClearAll}
       />
 
-      {/* Confirmación de Logout */}
       <ConfirmDialog
         visible={confirmLogout}
         title="¿Cerrar sesión?"
@@ -611,7 +599,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
 
-  // Modal de edición de precio
   priceModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

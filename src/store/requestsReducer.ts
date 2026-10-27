@@ -1,11 +1,6 @@
 import { ActionTypes, RequestsAction } from './actions';
 import { RequestsState } from './initialState';
 
-/**
- * Reducer puro: toda modificación de solicitudes pasa por aquí.
- * Cada acción que afecta un registro compara por `id`, así una edición
- * nunca modifica una solicitud distinta por error.
- */
 export function requestsReducer(state: RequestsState, action: RequestsAction): RequestsState {
   switch (action.type) {
     case ActionTypes.LOAD:
@@ -19,7 +14,7 @@ export function requestsReducer(state: RequestsState, action: RequestsAction): R
       return {
         ...state,
         requests: state.requests.map((r) =>
-          // id y fechaRegistro se preservan siempre.
+
           r.id === id ? { ...r, ...changes, id: r.id, fechaRegistro: r.fechaRegistro } : r,
         ),
       };

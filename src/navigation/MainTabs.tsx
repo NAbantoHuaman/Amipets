@@ -22,7 +22,6 @@ const ICONS: Record<keyof TabParamList, { active: IconName; inactive: IconName; 
   Settings: { active: 'settings', inactive: 'settings-outline', label: 'Ajustes' },
 };
 
-/** Navegación inferior: Inicio, Solicitudes, Calendario y Ajustes con altura adecuada. */
 export function MainTabs() {
   const insets = useSafeAreaInsets();
   const { requests } = useRequests();

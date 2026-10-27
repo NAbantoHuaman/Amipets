@@ -13,7 +13,6 @@ interface Props {
   style?: StyleProp<ViewStyle>;
 }
 
-/** Ícono sobre fondo pastel, como las categorías de la referencia. */
 export function IconTile({ icon, color, background, size = 48, shape = 'rounded', style }: Props) {
   return (
     <View

@@ -14,7 +14,6 @@ interface Props {
   compact?: boolean;
 }
 
-/** Estado vacío que orienta al usuario sobre el siguiente paso. */
 export function EmptyState({ icon = 'paw-outline', title, message, actionLabel, onAction, compact }: Props) {
   return (
     <View style={[styles.container, compact && styles.compact]} accessibilityRole="summary">

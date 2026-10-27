@@ -43,13 +43,11 @@ function getWeekDays(): { day: string; date: string; isToday: boolean }[] {
   });
 }
 
-/** Calendario médico conectado a las solicitudes reales del sistema. */
 export function CalendarScreen({ navigation }: Props) {
   const weekDays = useMemo(() => getWeekDays(), []);
   const [selectedDate, setSelectedDate] = useState(() => String(new Date().getDate()));
   const { requests } = useRequests();
 
-  // Filtra por el día seleccionado en el calendario (o muestra todas las de la agenda si coincide el día)
   const scheduledList = useMemo(() => {
     const forSelectedDay = requests.filter((r) => {
       const d = new Date(r.fechaRegistro);
@@ -61,7 +59,7 @@ export function CalendarScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={common.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Cabecera de Agenda */}
+
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.subtitle}>Agenda de Atenciones</Text>
@@ -80,7 +78,6 @@ export function CalendarScreen({ navigation }: Props) {
           </PressableScale>
         </View>
 
-        {/* Selector de Días de la Semana */}
         <View style={styles.weekRow}>
           {weekDays.map((d) => {
             const active = selectedDate === d.date;
@@ -102,7 +99,6 @@ export function CalendarScreen({ navigation }: Props) {
           })}
         </View>
 
-        {/* Resumen del Turno */}
         <View style={styles.shiftCard}>
           <View style={styles.shiftHeader}>
             <View style={styles.shiftBadge}>
@@ -117,7 +113,6 @@ export function CalendarScreen({ navigation }: Props) {
           </Text>
         </View>
 
-        {/* Listado de Solicitudes Conectadas al Estado Real */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={typography.heading}>Cronograma de Pacientes</Text>

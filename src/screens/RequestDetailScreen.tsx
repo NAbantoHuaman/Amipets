@@ -120,7 +120,6 @@ export function RequestDetailScreen({ navigation, route }: Props) {
     });
   };
 
-  // Acción rápida principal según estado actual
   const nextAction =
     request.estado === 'PENDIENTE'
       ? { label: 'Iniciar atención médica', status: 'EN_ATENCION' as RequestStatus, icon: 'play' as const }
@@ -151,7 +150,7 @@ export function RequestDetailScreen({ navigation, route }: Props) {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Tarjeta Hero del Paciente: Foto/Avatar honesto, Nombre, Especie, Chips de Estado/Prioridad */}
+
         <View style={styles.heroCard}>
           <View style={styles.heroTopRow}>
             <PetAvatar species={request.especie} size={64} shape="rounded" />
@@ -170,7 +169,6 @@ export function RequestDetailScreen({ navigation, route }: Props) {
             </View>
           </View>
 
-          {/* Fila única de Chips para resumen no redundante */}
           <View style={styles.chipsRow}>
             <ServiceChip service={request.tipoServicio} />
             <PriorityChip priority={request.prioridad} />
@@ -178,7 +176,6 @@ export function RequestDetailScreen({ navigation, route }: Props) {
           </View>
         </View>
 
-        {/* Sección 1: Control de Estado de la Atención */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeaderRow}>
             <Ionicons name="swap-horizontal-outline" size={18} color={colors.primary} />
@@ -241,7 +238,6 @@ export function RequestDetailScreen({ navigation, route }: Props) {
           </View>
         </View>
 
-        {/* Sección 2: Control de Nivel de Prioridad */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeaderRow}>
             <Ionicons name="flag-outline" size={18} color={colors.primary} />
@@ -289,7 +285,6 @@ export function RequestDetailScreen({ navigation, route }: Props) {
             })}
           </View>
 
-          {/* Explicación real del efecto de la prioridad */}
           <View style={styles.priorityNoticeBox}>
             <Ionicons name="information-circle-outline" size={16} color={priority.color} />
             <Text style={styles.priorityNoticeText}>
@@ -298,7 +293,6 @@ export function RequestDetailScreen({ navigation, route }: Props) {
           </View>
         </View>
 
-        {/* Sección 3: Motivo de la Atención y Registro */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeaderRow}>
             <Ionicons name="document-text-outline" size={18} color={colors.primary} />
@@ -326,7 +320,6 @@ export function RequestDetailScreen({ navigation, route }: Props) {
           </View>
         </View>
 
-        {/* Sección 4: Ficha del Tutor / Cliente */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeaderRow}>
             <Ionicons name="person-outline" size={18} color={colors.primary} />
@@ -355,7 +348,6 @@ export function RequestDetailScreen({ navigation, route }: Props) {
           </View>
         </View>
 
-        {/* Zona de peligro / Eliminar con confirmación */}
         <View style={styles.dangerZone}>
           <PrimaryButton
             title="Eliminar esta solicitud"
@@ -368,11 +360,9 @@ export function RequestDetailScreen({ navigation, route }: Props) {
           />
         </View>
 
-        {/* Espacio para el botón flotante inferior */}
         <View style={{ height: 80 }} />
       </ScrollView>
 
-      {/* Botón inferior fijo contextual */}
       <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 14) }]}>
         {nextAction ? (
           <PrimaryButton
@@ -394,7 +384,6 @@ export function RequestDetailScreen({ navigation, route }: Props) {
         )}
       </View>
 
-      {/* Confirmación obligatoria antes de eliminar según rúbrica */}
       <ConfirmDialog
         visible={confirmDelete}
         title="¿Eliminar atención?"
@@ -438,7 +427,6 @@ const styles = StyleSheet.create({
     color: colors.primaryDark,
   },
 
-  // Hero Card del Paciente
   heroCard: {
     ...common.card,
     padding: spacing.md,
@@ -493,7 +481,6 @@ const styles = StyleSheet.create({
     borderTopColor: colors.divider,
   },
 
-  // Secciones genéricas
   sectionCard: {
     ...common.card,
     padding: spacing.lg,
@@ -511,7 +498,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
 
-  // Lista de opciones de estado
   statusOptionsList: {
     gap: spacing.sm,
     marginTop: spacing.xs,
@@ -559,7 +545,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // Grilla de prioridades táctil accesible (minHeight: 44)
   priorityGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -605,7 +590,6 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
 
-  // Motivo y detalles de servicio
   serviceMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -654,7 +638,6 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
 
-  // Tutor / Cliente
   clientInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -705,7 +688,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
 
-  // Barra inferior fija
   bottomBar: {
     position: 'absolute',
     bottom: 0,

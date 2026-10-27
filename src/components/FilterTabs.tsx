@@ -16,12 +16,11 @@ interface Props<T extends string> {
   options: FilterOption<T>[];
   value: T;
   onChange: (value: T) => void;
-  /** underline: pestañas con subrayado (estado). chips: píldoras (prioridad). */
+
   variant?: 'underline' | 'chips';
   accessibilityLabel?: string;
 }
 
-/** Pestañas de filtro reutilizables con dos estilos visuales. */
 export function FilterTabs<T extends string>({ options, value, onChange, variant = 'underline', accessibilityLabel }: Props<T>) {
   if (variant === 'chips') {
     return (

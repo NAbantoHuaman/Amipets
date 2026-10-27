@@ -17,7 +17,6 @@ interface Props {
   onCancel: () => void;
 }
 
-/** Diálogo de confirmación propio (funciona igual en Android, iOS y web). */
 export function ConfirmDialog({
   visible,
   title,
@@ -53,7 +52,7 @@ export function ConfirmDialog({
             },
           ]}
         >
-          {/* Evita que tocar la tarjeta cierre el diálogo */}
+
           <Pressable accessibilityRole="alert" accessibilityViewIsModal>
             <View style={[styles.iconWrap, { backgroundColor: tintSoft }]}>
               <Ionicons name={icon ?? (destructive ? 'trash-outline' : 'help-circle-outline')} size={28} color={tint} />

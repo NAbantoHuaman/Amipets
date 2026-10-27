@@ -7,7 +7,6 @@ interface Props {
   style?: StyleProp<ViewStyle>;
 }
 
-/** Entrada suave (opacidad + desplazamiento) para escalonar secciones. */
 export function FadeInView({ children, delay = 0, style }: Props) {
   const anim = useRef(new Animated.Value(0)).current;
 

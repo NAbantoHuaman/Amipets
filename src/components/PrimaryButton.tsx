@@ -12,7 +12,7 @@ interface Props {
   onPress: () => void;
   variant?: Variant;
   icon?: IconName;
-  /** Ícono a la derecha (por defecto, flecha en el botón principal). */
+
   trailingIcon?: IconName | null;
   loading?: boolean;
   disabled?: boolean;
@@ -30,7 +30,6 @@ const VARIANTS: Record<Variant, { bg: string; fg: string; border: string }> = {
   ghost: { bg: 'transparent', fg: colors.primaryDark, border: 'transparent' },
 };
 
-/** Botón tipo píldora de la referencia visual (p. ej. "Book an Appointment →"). */
 export function PrimaryButton({
   title,
   onPress,

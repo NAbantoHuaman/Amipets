@@ -3,13 +3,11 @@ const WEEKDAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes
 
 const pad = (value: number) => value.toString().padStart(2, '0');
 
-/** 21 oct 2026 */
 export function formatDate(iso: string): string {
   const d = new Date(iso);
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-/** 09:05 a. m. */
 export function formatTime(iso: string): string {
   const d = new Date(iso);
   const hours = d.getHours();
@@ -18,12 +16,10 @@ export function formatTime(iso: string): string {
   return `${pad(h12)}:${pad(d.getMinutes())} ${suffix}`;
 }
 
-/** 21 oct 2026 · 09:05 a. m. */
 export function formatDateTime(iso: string): string {
   return `${formatDate(iso)} · ${formatTime(iso)}`;
 }
 
-/** martes, 21 de octubre */
 export function formatLongToday(date = new Date()): string {
   const longMonths = [
     'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -32,7 +28,6 @@ export function formatLongToday(date = new Date()): string {
   return `${WEEKDAYS[date.getDay()]}, ${date.getDate()} de ${longMonths[date.getMonth()]}`;
 }
 
-/** "Hace 5 min", "Hace 2 h", "Ayer", "21 oct 2026" */
 export function formatRelative(iso: string, now = new Date()): string {
   const diffMs = now.getTime() - new Date(iso).getTime();
   const minutes = Math.floor(diffMs / 60000);
@@ -55,7 +50,6 @@ export function isSameDay(iso: string, other: Date): boolean {
   );
 }
 
-/** Saludo según la hora del día. */
 export function greeting(date = new Date()): string {
   const h = date.getHours();
   if (h < 12) return 'Buenos días,';

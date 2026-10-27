@@ -16,7 +16,6 @@ import { ADMIN_PASS, ADMIN_USER, CLINIC_NAME, useAuth } from '../context/AuthCon
 import { useToast } from '../context/ToastContext';
 import { colors, common, fonts, HIT_SLOP, radius, shadows, spacing, typography } from '../theme';
 
-/** Pantalla de bienvenida y acceso con cuenta admin / admin. */
 export function WelcomeScreen() {
   const { signIn } = useAuth();
   const { showToast } = useToast();
@@ -56,7 +55,7 @@ export function WelcomeScreen() {
   };
 
   const handlePasswordFocus = () => {
-    // Desliza suavemente para que la contraseña y el botón no queden tapados por el teclado
+
     setTimeout(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
     }, 200);
@@ -75,7 +74,7 @@ export function WelcomeScreen() {
           automaticallyAdjustKeyboardInsets={true}
           showsVerticalScrollIndicator={false}
         >
-          {/* Hero Banner bien proporcionado que encaja en la pantalla */}
+
           <View style={styles.hero}>
             <Image source={require('../../assets/images/welcome.jpg')} style={styles.heroImage} resizeMode="cover" />
             <View style={styles.heroOverlay}>
@@ -83,7 +82,6 @@ export function WelcomeScreen() {
             </View>
           </View>
 
-          {/* Identidad de la Clínica */}
           <View style={styles.brandRow}>
             <IconTile icon="paw" color={colors.white} background={colors.primary} size={42} shape="circle" />
             <View>
@@ -99,7 +97,6 @@ export function WelcomeScreen() {
             Registro de ingresos, seguimiento de consultas y atención oportuna de urgencias.
           </Text>
 
-          {/* Formulario de Inicio de Sesión */}
           <View style={styles.formCard}>
             <FormField
               testID="login-user"

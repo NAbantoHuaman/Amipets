@@ -9,7 +9,6 @@ interface Props {
   right?: ReactNode;
 }
 
-/** Encabezado centrado con botón circular de volver (como "Buddy" en la referencia). */
 export function ScreenHeader({ title, onBack, right }: Props) {
   return (
     <View style={styles.row}>

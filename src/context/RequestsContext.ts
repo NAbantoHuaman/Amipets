@@ -15,7 +15,6 @@ export interface RequestsContextValue {
 
 export const RequestsContext = createContext<RequestsContextValue | null>(null);
 
-/** Acceso tipado al estado compartido de solicitudes. */
 export function useRequests(): RequestsContextValue {
   const ctx = useContext(RequestsContext);
   if (!ctx) {

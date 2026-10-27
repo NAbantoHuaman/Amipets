@@ -22,7 +22,6 @@ export const radius = {
   pill: 999,
 } as const;
 
-/** Sombras discretas, consistentes entre Android, iOS y web. */
 export const shadows = {
   soft: Platform.select<ViewStyle>({
     android: { elevation: 2, shadowColor: colors.shadow },
@@ -44,7 +43,6 @@ export const shadows = {
   }),
 };
 
-/** Estilos comunes reutilizados por varias pantallas. */
 export const common = {
   screen: { flex: 1, backgroundColor: colors.background } as ViewStyle,
   card: {
@@ -57,5 +55,4 @@ export const common = {
   row: { flexDirection: 'row', alignItems: 'center' } as ViewStyle,
 };
 
-/** Área mínima táctil recomendada (accesibilidad). */
 export const HIT_SLOP = { top: 10, bottom: 10, left: 10, right: 10 };

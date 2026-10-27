@@ -13,10 +13,6 @@ interface VisualMeta {
   background: string;
 }
 
-/**
- * Estados (chips rellenos): pizarra = en espera, azul = en curso, verde = terminado.
- * Usan una familia de color distinta a las prioridades.
- */
 export const STATUS_META: Record<RequestStatus, VisualMeta & { description: string }> = {
   PENDIENTE: {
     label: 'Pendiente',
@@ -41,7 +37,6 @@ export const STATUS_META: Record<RequestStatus, VisualMeta & { description: stri
   },
 };
 
-/** Prioridades (chips con borde): escala de calor de gris a rojo. */
 export const PRIORITY_META: Record<Priority, VisualMeta & { order: number }> = {
   URGENTE: { label: 'Urgente', icon: 'flame', color: colors.priorityUrgent, background: colors.priorityUrgentSoft, order: 0 },
   ALTA: { label: 'Alta', icon: 'arrow-up', color: colors.priorityHigh, background: colors.priorityHighSoft, order: 1 },
@@ -49,10 +44,8 @@ export const PRIORITY_META: Record<Priority, VisualMeta & { order: number }> = {
   BAJA: { label: 'Baja', icon: 'arrow-down', color: colors.priorityLow, background: colors.priorityLowSoft, order: 3 },
 };
 
-/** Orden visual de menor a mayor para selectores (Baja → Urgente). */
 export const PRIORITIES_ASC: Priority[] = ['BAJA', 'MEDIA', 'ALTA', 'URGENTE'];
 
-/** Explica qué hace realmente cada prioridad dentro de la app. */
 export const PRIORITY_EFFECT: Record<Priority, string> = {
   URGENTE: 'Aparece primero en el listado, se cuenta en la alerta de urgencias de Inicio y en el contador de la pestaña Solicitudes.',
   ALTA: 'Se ordena antes que las solicitudes de prioridad media y baja.',
@@ -91,7 +84,6 @@ export const SERVICE_META: Record<ServiceType, VisualMeta & { hint: string }> = 
   },
 };
 
-/** Las mascotas se representan con un ícono por especie, no con fotos genéricas. */
 export const SPECIES_META: Record<Species, { label: string; icon: SpeciesIconName; color: string; background: string }> = {
   PERRO: { label: 'Perro', icon: 'dog', color: colors.primaryDark, background: colors.primarySoft },
   GATO: { label: 'Gato', icon: 'cat', color: colors.lavender, background: colors.lavenderSoft },

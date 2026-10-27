@@ -1,6 +1,5 @@
 import { RequestChanges, RequestStatus, VeterinaryRequest } from '../models/request';
 
-/** Tipos de acción centralizados del CRUD. */
 export const ActionTypes = {
   LOAD: 'LOAD',
   CREATE: 'CREATE',
@@ -20,7 +19,6 @@ export type RequestsAction =
   | { type: typeof ActionTypes.RESET_DEMO; payload: VeterinaryRequest[] }
   | { type: typeof ActionTypes.CLEAR_ALL };
 
-/** Creadores de acciones: evitan escribir objetos a mano en las pantallas. */
 export const actions = {
   load: (payload: VeterinaryRequest[]): RequestsAction => ({ type: ActionTypes.LOAD, payload }),
   create: (payload: VeterinaryRequest): RequestsAction => ({ type: ActionTypes.CREATE, payload }),

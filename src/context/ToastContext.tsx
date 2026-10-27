@@ -32,10 +32,9 @@ const KIND_META: Record<ToastKind, { icon: 'checkmark-circle' | 'alert-circle' |
 };
 
 const VISIBLE_MS = 2600;
-/** Con acción (p. ej. Deshacer) se deja más tiempo para poder pulsarla. */
+
 const VISIBLE_WITH_ACTION_MS = 5000;
 
-/** Alertas de éxito y error no bloqueantes, animadas desde arriba. */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const anim = useRef(new Animated.Value(0)).current;

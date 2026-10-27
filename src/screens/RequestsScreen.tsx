@@ -21,14 +21,12 @@ type Props = CompositeScreenProps<
 type StatusFilter = RequestStatus | 'TODOS';
 type PriorityFilter = Priority | 'TODAS';
 
-/** Listado con buscador, filtros por estado/prioridad y orden de atención. */
 export function RequestsScreen({ navigation, route }: Props) {
   const { requests, loading } = useRequests();
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<StatusFilter>('TODOS');
   const [priority, setPriority] = useState<PriorityFilter>('TODAS');
 
-  // Aplica filtros recibidos desde Inicio (contadores, urgencias, etc.).
   useEffect(() => {
     const params = route.params;
     if (!params?.nonce) return;

@@ -43,19 +43,16 @@ const SUMMARY: { status: RequestStatus; label: string }[] = [
   { status: 'FINALIZADO', label: 'Finalizadas' },
 ];
 
-/** Inicio: saludo al doctor, accesos rápidos centrados, notificaciones y resumen. */
 export function HomeScreen({ navigation }: Props) {
   const { session } = useAuth();
   const { requests, loading } = useRequests();
   const [showNotifications, setShowNotifications] = useState(false);
 
-  // Derivados del estado global: se recalculan en cada cambio del CRUD.
   const counts = useMemo(() => countByStatus(requests), [requests]);
   const urgent = useMemo(() => activeUrgent(requests), [requests]);
   const latest = useMemo(() => sortByNewest(requests).slice(0, 3), [requests]);
   const todayCount = useMemo(() => requests.filter((r) => isSameDay(r.fechaRegistro, new Date())).length, [requests]);
 
-  // Conteos reales de solicitudes activas por cada tipo de servicio
   const serviceCounts = useMemo(() => {
     const map: Record<ServiceType, number> = { CONSULTA: 0, VACUNACION: 0, EMERGENCIA: 0, GROOMING: 0 };
     for (const r of requests) {
@@ -64,7 +61,6 @@ export function HomeScreen({ navigation }: Props) {
     return map;
   }, [requests]);
 
-  // Lista de notificaciones clínicas en tiempo real
   const notifications = useMemo(() => {
     const list: {
       id: string;
@@ -125,7 +121,7 @@ export function HomeScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={common.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Saludo personalizado al Doctor */}
+
         <FadeInView style={styles.header}>
           <View style={{ flex: 1 }}>
             <Text style={styles.greeting}>{greeting()}</Text>
@@ -145,7 +141,6 @@ export function HomeScreen({ navigation }: Props) {
           />
         </FadeInView>
 
-        {/* Banner principal */}
         <FadeInView delay={80}>
           <View style={styles.hero}>
             <Image source={require('../../assets/images/hero.jpg')} style={styles.heroImage} resizeMode="cover" />
@@ -163,7 +158,6 @@ export function HomeScreen({ navigation }: Props) {
           </View>
         </FadeInView>
 
-        {/* Servicios Asistenciales Centrados */}
         <FadeInView delay={160} style={styles.section}>
           <SectionHeader
             title="Servicios asistenciales"
@@ -219,7 +213,6 @@ export function HomeScreen({ navigation }: Props) {
           </View>
         </FadeInView>
 
-        {/* Indicador de urgencias */}
         {urgent.length > 0 && (
           <FadeInView delay={220}>
             <PressableScale
@@ -243,7 +236,6 @@ export function HomeScreen({ navigation }: Props) {
           </FadeInView>
         )}
 
-        {/* Resumen de Atenciones Centrado */}
         <FadeInView delay={280} style={styles.section}>
           <SectionHeader title="Resumen de atenciones" actionLabel="Ver todo" onAction={() => openRequests()} />
           <View style={styles.summaryRow}>
@@ -279,7 +271,6 @@ export function HomeScreen({ navigation }: Props) {
           </View>
         </FadeInView>
 
-        {/* Últimas atenciones */}
         <FadeInView delay={340} style={styles.section}>
           <SectionHeader title="Últimas atenciones" actionLabel="Ver todas" onAction={() => openRequests()} />
           {loading ? (
@@ -305,7 +296,6 @@ export function HomeScreen({ navigation }: Props) {
         </FadeInView>
       </ScrollView>
 
-      {/* Modal de Centro de Notificaciones */}
       <Modal
         visible={showNotifications}
         animationType="slide"
@@ -395,7 +385,6 @@ const styles = StyleSheet.create({
   heroTitle: { fontFamily: fonts.semibold, fontSize: 19, lineHeight: 24, color: colors.text },
   heroButton: { alignSelf: 'flex-start', minHeight: 40 },
 
-  // Cuadrícula 2x2 centrada y balanceada de servicios asistenciales
   servicesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -473,7 +462,6 @@ const styles = StyleSheet.create({
 
   section: { marginTop: spacing.xl },
 
-  // Fila de 3 tarjetas del resumen de atenciones distribuidas equitativamente
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -508,7 +496,6 @@ const styles = StyleSheet.create({
   todayRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: spacing.sm },
   emptyCard: { ...common.card },
 
-  // Modal de Notificaciones
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',

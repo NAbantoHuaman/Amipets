@@ -12,13 +12,12 @@ interface Props {
   color?: string;
   background?: string;
   size?: number;
-  /** Punto rojo de notificación (p. ej. urgencias). */
+
   badge?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
 
-/** Botón circular blanco (atrás, notificaciones, etc.). */
 export function IconButton({
   icon,
   onPress,

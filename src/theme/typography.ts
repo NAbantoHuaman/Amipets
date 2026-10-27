@@ -1,7 +1,6 @@
 import { TextStyle } from 'react-native';
 import { colors } from './colors';
 
-/** Familias cargadas en App.tsx con expo-font. */
 export const fonts = {
   regular: 'Poppins_400Regular',
   medium: 'Poppins_500Medium',

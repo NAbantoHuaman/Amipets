@@ -12,7 +12,6 @@ export const LIMITS = {
 
 const NAME_PATTERN = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' .-]+$/;
 
-/** Quita espacios, guiones y paréntesis: "987 654-321" → "987654321". */
 export function normalizePhone(value: string): string {
   return value.replace(/[\s()-]/g, '');
 }
@@ -49,10 +48,6 @@ export function validateDescription(value: string): string | undefined {
   return undefined;
 }
 
-/**
- * Valida el formulario completo. Devuelve un error por campo para
- * mostrarlo debajo de cada input (no una alerta genérica).
- */
 export function validateRequest(input: Partial<RequestInput>): FormErrors {
   const errors: FormErrors = {
     clienteNombre: validateClientName(input.clienteNombre ?? ''),

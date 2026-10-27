@@ -15,7 +15,6 @@ interface Props {
   onPress: (id: string) => void;
 }
 
-/** Tarjeta de solicitud: mascota, servicio, fecha, prioridad y estado. */
 function RequestCardBase({ request, onPress }: Props) {
   const service = SERVICE_META[request.tipoServicio];
   const isUrgent = request.prioridad === 'URGENTE' && request.estado !== 'FINALIZADO';

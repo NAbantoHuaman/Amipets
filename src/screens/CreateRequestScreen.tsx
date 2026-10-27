@@ -46,7 +46,6 @@ const EMPTY_FORM: FormState = {
   descripcion: '',
 };
 
-/** Formulario para crear (sin requestId) o editar (con requestId) una solicitud. */
 export function CreateRequestScreen({ navigation, route }: Props) {
   const { getRequestById, createRequest, updateRequest } = useRequests();
   const { showToast } = useToast();
@@ -69,8 +68,7 @@ export function CreateRequestScreen({ navigation, route }: Props) {
     }
     const service = route.params?.service;
     return { ...EMPTY_FORM, tipoServicio: service, prioridad: service === 'EMERGENCIA' ? 'URGENTE' : 'MEDIA' };
-    // Solo se calcula al abrir la pantalla.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   const [form, setForm] = useState<FormState>(initialForm);
@@ -85,21 +83,18 @@ export function CreateRequestScreen({ navigation, route }: Props) {
   const petRef = useRef<any>(null);
   const descRef = useRef<any>(null);
 
-  // Reloj en vivo para la fecha/hora de registro (solo al crear).
   useEffect(() => {
     if (isEdit) return;
     const timer = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(timer);
   }, [isEdit]);
 
-  // Tras el primer intento de guardar, los errores se actualizan en vivo.
   useEffect(() => {
     if (submitted) setErrors(validateRequest(form));
   }, [form, submitted]);
 
   const isDirty = JSON.stringify(form) !== JSON.stringify(initialForm);
 
-  // Evita perder datos por accidente al salir con cambios sin guardar.
   usePreventRemove(isDirty && !saving, ({ data }) => {
     if (savedRef.current) navigation.dispatch(data.action);
     else setPendingAction(data.action);
@@ -127,7 +122,7 @@ export function CreateRequestScreen({ navigation, route }: Props) {
     };
 
     setSaving(true);
-    savedRef.current = true; // permite salir sin el diálogo de descartar
+    savedRef.current = true;
     if (isEdit && editingId) {
       updateRequest(editingId, input);
       showToast('success', 'Cambios guardados', `La solicitud de ${input.mascotaNombre.trim()} se actualizó.`);
@@ -164,7 +159,7 @@ export function CreateRequestScreen({ navigation, route }: Props) {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          {/* Cliente */}
+
           <View style={styles.card}>
             <CardTitle icon="person-outline" title="Datos del cliente" />
             <FormField
@@ -199,7 +194,6 @@ export function CreateRequestScreen({ navigation, route }: Props) {
             />
           </View>
 
-          {/* Mascota */}
           <View style={styles.card}>
             <CardTitle icon="paw-outline" title="Mascota" />
             <Text style={styles.fieldLabel}>Especie</Text>
@@ -241,7 +235,6 @@ export function CreateRequestScreen({ navigation, route }: Props) {
             />
           </View>
 
-          {/* Servicio */}
           <View style={styles.card}>
             <View style={styles.sectionHeaderBetween}>
               <CardTitle icon="medkit-outline" title="Tipo de servicio solicitado" required />
@@ -334,7 +327,6 @@ export function CreateRequestScreen({ navigation, route }: Props) {
             {errors.tipoServicio && <InlineError text={errors.tipoServicio} />}
           </View>
 
-          {/* Prioridad */}
           <View style={styles.card}>
             <View style={styles.sectionHeaderBetween}>
               <CardTitle icon="pulse-outline" title="Prioridad Triage" />
@@ -348,7 +340,6 @@ export function CreateRequestScreen({ navigation, route }: Props) {
               </Text>
             </View>
 
-            {/* Barra segmentada horizontal con pastilla activa (Baja → Urgente) */}
             <View style={styles.triageSegmentBar} accessibilityRole="radiogroup">
               {PRIORITIES_ASC.map((p) => {
                 const meta = PRIORITY_META[p];
@@ -386,7 +377,6 @@ export function CreateRequestScreen({ navigation, route }: Props) {
               })}
             </View>
 
-            {/* Explicación real del efecto de la prioridad en la app */}
             <View
               style={[
                 styles.triageNoticeCard,
@@ -404,7 +394,6 @@ export function CreateRequestScreen({ navigation, route }: Props) {
             </View>
           </View>
 
-          {/* Motivo */}
           <View style={styles.card}>
             <CardTitle icon="document-text-outline" title="Motivo de atención" />
             <FormField

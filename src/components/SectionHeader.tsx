@@ -8,7 +8,6 @@ interface Props {
   onAction?: () => void;
 }
 
-/** Título de sección con enlace "Ver todo" en color de marca. */
 export function SectionHeader({ title, actionLabel, onAction }: Props) {
   return (
     <View style={styles.row}>

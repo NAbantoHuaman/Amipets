@@ -6,11 +6,10 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 interface Props extends Omit<PressableProps, 'style' | 'children'> {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
-  /** Escala al presionar (micro-interacción). */
+
   pressedScale?: number;
 }
 
-/** Pressable directo con leve efecto de escala, sin wrappers anidados que rompan flexbox. */
 export function PressableScale({ children, style, pressedScale = 0.97, onPressIn, onPressOut, ...rest }: Props) {
   const scale = useRef(new Animated.Value(1)).current;
 

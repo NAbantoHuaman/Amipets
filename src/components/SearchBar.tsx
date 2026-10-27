@@ -10,7 +10,6 @@ interface Props {
   testID?: string;
 }
 
-/** Buscador redondeado con botón para limpiar. */
 export function SearchBar({ value, onChangeText, placeholder = 'Buscar', testID }: Props) {
   return (
     <View style={styles.container}>

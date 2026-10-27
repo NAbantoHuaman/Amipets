@@ -11,12 +11,11 @@ interface ChipProps {
   background: string;
   icon?: IconName;
   size?: 'sm' | 'md';
-  /** filled: fondo de color (estados). outline: borde de color sobre blanco (prioridades). */
+
   variant?: 'filled' | 'outline';
   accessibilityLabel?: string;
 }
 
-/** Píldora con texto e ícono. Base de los chips de estado, prioridad y servicio. */
 export function Chip({ label, color, background, icon, size = 'sm', variant = 'filled', accessibilityLabel }: ChipProps) {
   const sm = size === 'sm';
   const outline = variant === 'outline';
@@ -40,7 +39,6 @@ export function Chip({ label, color, background, icon, size = 'sm', variant = 'f
   );
 }
 
-/** Estado de la atención: chip relleno. */
 export function StatusChip({ status, size }: { status: RequestStatus; size?: 'sm' | 'md' }) {
   const m = STATUS_META[status];
   return (
@@ -55,7 +53,6 @@ export function StatusChip({ status, size }: { status: RequestStatus; size?: 'sm
   );
 }
 
-/** Prioridad: chip con borde, para diferenciarlo del estado aunque estén juntos. */
 export function PriorityChip({ priority, size }: { priority: Priority; size?: 'sm' | 'md' }) {
   const m = PRIORITY_META[priority];
   return (
@@ -71,7 +68,6 @@ export function PriorityChip({ priority, size }: { priority: Priority; size?: 's
   );
 }
 
-/** Tipo de servicio: chip relleno con el color de la categoría. */
 export function ServiceChip({ service, size }: { service: ServiceType; size?: 'sm' | 'md' }) {
   const m = SERVICE_META[service];
   return (

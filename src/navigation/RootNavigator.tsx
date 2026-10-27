@@ -24,7 +24,6 @@ const navTheme: Theme = {
   },
 };
 
-/** Navegación raíz: login → pestañas principales → pantallas de detalle/formulario. */
 export function RootNavigator() {
   const { session } = useAuth();
 
