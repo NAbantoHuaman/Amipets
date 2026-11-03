@@ -12,7 +12,6 @@ function readStorage<T>(key: string): T | null {
       return raw ? (JSON.parse(raw) as T) : null;
     }
   } catch {
-    // Fallback to memory if storage is unavailable
   }
   return null;
 }
@@ -27,7 +26,6 @@ function writeStorage<T>(key: string, value: T | null): void {
       }
     }
   } catch {
-    // Ignore storage errors
   }
 }
 
@@ -108,7 +106,6 @@ export class InMemoryAuthRepository implements IAuthRepository {
       throw new Error(`El usuario "${cleanUser}" ya se encuentra registrado en el sistema.`);
     }
 
-    // El registro desde el formulario es exclusivo para Recepcionistas de la clínica
     const config = ROLE_CONFIGS.RECEPTIONIST;
     const shiftText = input.shift?.trim() || 'Turno Completo (08:00 - 20:00)';
 

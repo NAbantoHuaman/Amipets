@@ -20,7 +20,6 @@ function readStorage<T>(key: string): T | null {
       return raw ? (JSON.parse(raw) as T) : null;
     }
   } catch {
-    // Fallback to memory
   }
   return null;
 }
@@ -31,7 +30,6 @@ function writeStorage<T>(key: string, value: T): void {
       globalThis.localStorage.setItem(key, JSON.stringify(value));
     }
   } catch {
-    // Ignore storage errors
   }
 }
 

@@ -73,7 +73,6 @@ export function WelcomeScreen({ navigation }: Props) {
           alwaysBounceVertical={false}
           showsVerticalScrollIndicator={false}
         >
-          {/* 1. Encabezado superior: Amipets */}
           <FadeInView delay={40} distance={10}>
             <View style={styles.topBrandHeader}>
               <View style={styles.brandLeft}>
@@ -92,7 +91,6 @@ export function WelcomeScreen({ navigation }: Props) {
             </View>
           </FadeInView>
 
-          {/* 2. Banner central entre Amipets e Iniciar sesión */}
           <FadeInView delay={120} distance={14} scale>
             <View style={styles.hero}>
               <Image
@@ -106,7 +104,6 @@ export function WelcomeScreen({ navigation }: Props) {
             </View>
           </FadeInView>
 
-          {/* 3. Tarjeta inferior: Iniciar sesión */}
           <FadeInView delay={200} distance={18}>
             <View style={styles.formCard}>
               <View style={styles.cardHeader}>
