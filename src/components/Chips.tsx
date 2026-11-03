@@ -83,8 +83,8 @@ export function ServiceChip({ service, size }: { service: ServiceType; size?: 's
 }
 
 const styles = StyleSheet.create({
-  chip: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', borderRadius: radius.pill, gap: 4 },
-  sm: { paddingHorizontal: spacing.xs, paddingVertical: 2 },
-  md: { paddingHorizontal: spacing.sm, paddingVertical: 5 },
-  label: { fontFamily: fonts.medium },
+  chip: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', borderRadius: radius.sm, gap: 4 },
+  sm: { paddingHorizontal: 7, paddingVertical: 2.5 },
+  md: { paddingHorizontal: 10, paddingVertical: 4.5 },
+  label: { fontFamily: fonts.semibold, letterSpacing: 0.1 },
 });

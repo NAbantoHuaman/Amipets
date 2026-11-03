@@ -3,20 +3,24 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { FormField, IconTile, PrimaryButton } from '../components';
-import { ADMIN_PASS, ADMIN_USER, CLINIC_NAME, useAuth } from '../context/AuthContext';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { FadeInView, FormField, IconTile, PressableScale, PrimaryButton, PulseView } from '../components';
+import { CLINIC_NAME, useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { colors, common, fonts, HIT_SLOP, radius, shadows, spacing, typography } from '../theme';
+import { RootStackParamList } from '../navigation/types';
+import { colors, common, fonts, radius, shadows, spacing, typography } from '../theme';
 
-export function WelcomeScreen() {
+type Props = NativeStackScreenProps<RootStackParamList, 'Welcome'>;
+
+export function WelcomeScreen({ navigation }: Props) {
   const { signIn } = useAuth();
   const { showToast } = useToast();
   const [user, setUser] = useState('');
@@ -30,8 +34,8 @@ export function WelcomeScreen() {
 
   const submit = () => {
     const next: typeof errors = {};
-    if (user.trim().length < 3) next.user = 'Ingresa tu usuario (ej. admin).';
-    if (password.length < 4) next.password = 'Ingresa tu contraseña (ej. admin).';
+    if (user.trim().length < 3) next.user = 'Ingresa tu usuario.';
+    if (password.length < 4) next.password = 'Ingresa tu contraseña.';
     setErrors(next);
     if (Object.keys(next).length) {
       showToast('error', 'Revisa tus datos', 'Completa los campos marcados.');
@@ -42,20 +46,13 @@ export function WelcomeScreen() {
       setLoading(false);
       const success = signIn(user, password);
       if (!success) {
-        setErrors({ password: 'Credenciales no válidas. Prueba con admin / admin.' });
-        showToast('error', 'Acceso denegado', 'Usa las credenciales: admin / admin');
+        setErrors({ password: 'Credenciales no válidas. Verifica tu usuario o regístrate.' });
+        showToast('error', 'Acceso denegado', 'Verifica tus credenciales o crea una cuenta.');
       }
     }, 350);
   };
 
-  const fillAdmin = () => {
-    setUser(ADMIN_USER);
-    setPassword(ADMIN_PASS);
-    setErrors({});
-  };
-
   const handlePasswordFocus = () => {
-
     setTimeout(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
     }, 200);
@@ -71,102 +68,121 @@ export function WelcomeScreen() {
           ref={scrollRef}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets={true}
+          bounces={false}
+          overScrollMode="never"
+          alwaysBounceVertical={false}
           showsVerticalScrollIndicator={false}
         >
-
-          <View style={styles.hero}>
-            <Image source={require('../../assets/images/welcome.jpg')} style={styles.heroImage} resizeMode="cover" />
-            <View style={styles.heroOverlay}>
-              <Text style={styles.script}>Mascotas felices,{'\n'}vidas más sanas ♡</Text>
+          {/* 1. Encabezado superior: Amipets */}
+          <FadeInView delay={40} distance={10}>
+            <View style={styles.topBrandHeader}>
+              <View style={styles.brandLeft}>
+                <IconTile icon="paw" size={40} color={colors.white} background={colors.primary} />
+                <View>
+                  <Text style={styles.brand}>Amipets</Text>
+                  <Text style={styles.brandSub}>{CLINIC_NAME}</Text>
+                </View>
+              </View>
+              <View style={styles.statusPill}>
+                <PulseView minScale={0.8} maxScale={1.2} duration={1400}>
+                  <View style={styles.statusDot} />
+                </PulseView>
+                <Text style={styles.statusTag}>Clínica</Text>
+              </View>
             </View>
-          </View>
+          </FadeInView>
 
-          <View style={styles.brandRow}>
-            <IconTile icon="paw" color={colors.white} background={colors.primary} size={42} shape="circle" />
-            <View>
-              <Text style={styles.brand}>Amipets</Text>
-              <Text style={typography.caption}>{CLINIC_NAME}</Text>
+          {/* 2. Banner central entre Amipets e Iniciar sesión */}
+          <FadeInView delay={120} distance={14} scale>
+            <View style={styles.hero}>
+              <Image
+                source={require('../../assets/images/welcome.jpg')}
+                style={styles.heroImage}
+                resizeMode="cover"
+              />
+              <View style={styles.heroOverlay}>
+                <Text style={styles.script}>Mascotas felices,{'\n'}vidas más sanas</Text>
+              </View>
             </View>
-          </View>
+          </FadeInView>
 
-          <Text style={styles.title} accessibilityRole="header">
-            Atención clínica y control de pacientes
-          </Text>
-          <Text style={styles.subtitle}>
-            Registro de ingresos, seguimiento de consultas y atención oportuna de urgencias.
-          </Text>
+          {/* 3. Tarjeta inferior: Iniciar sesión */}
+          <FadeInView delay={200} distance={18}>
+            <View style={styles.formCard}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.title}>Iniciar sesión</Text>
+                <Text style={styles.subtitle}>
+                  Ingresa con tu cuenta para acceder al panel de la clínica.
+                </Text>
+              </View>
 
-          <View style={styles.formCard}>
-            <FormField
-              testID="login-user"
-              label="Usuario"
-              icon="person-outline"
-              placeholder="admin"
-              value={user}
-              onChangeText={(t) => {
-                setUser(t);
-                if (errors.user) setErrors((e) => ({ ...e, user: undefined }));
-              }}
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="next"
-              onSubmitEditing={() => {
-                passwordRef.current?.focus();
-                handlePasswordFocus();
-              }}
-              error={errors.user}
-            />
-            <View>
+              <FormField
+                label="Usuario"
+                value={user}
+                onChangeText={(t) => {
+                  setUser(t);
+                  if (errors.user) setErrors((prev) => ({ ...prev, user: undefined }));
+                }}
+                placeholder="Ingresa tu usuario"
+                autoCapitalize="none"
+                returnKeyType="next"
+                onSubmitEditing={() => passwordRef.current?.focus()}
+                icon="person-outline"
+                error={errors.user}
+                accessibilityLabel="Campo de nombre de usuario"
+                testID="login-user-input"
+              />
+
               <FormField
                 ref={passwordRef}
-                testID="login-password"
                 label="Contraseña"
-                icon="lock-closed-outline"
-                placeholder="admin"
                 value={password}
                 onChangeText={(t) => {
                   setPassword(t);
-                  if (errors.password) setErrors((e) => ({ ...e, password: undefined }));
+                  if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
                 }}
-                onFocus={handlePasswordFocus}
+                placeholder="Ingresa tu contraseña"
                 secureTextEntry={!showPassword}
                 returnKeyType="go"
                 onSubmitEditing={submit}
+                onFocus={handlePasswordFocus}
+                icon="lock-closed-outline"
+                rightIcon={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                onRightIconPress={() => setShowPassword((p) => !p)}
+                rightIconLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                 error={errors.password}
+                accessibilityLabel="Campo de contraseña"
+                testID="login-password-input"
               />
-              <Pressable
-                onPress={() => setShowPassword((v) => !v)}
-                hitSlop={HIT_SLOP}
-                style={styles.eye}
-                accessibilityRole="button"
-                accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-              >
-                <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.textMuted} />
-              </Pressable>
+
+              <PrimaryButton
+                title="Iniciar Sesión"
+                onPress={submit}
+                loading={loading}
+                testID="login-submit"
+                style={{ marginTop: spacing.xs }}
+              />
+
+              <View style={styles.registerBox}>
+                <View style={styles.dividerRow}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>o</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                <PressableScale
+                  style={styles.registerButton}
+                  onPress={() => navigation.navigate('Register')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Crear cuenta"
+                  testID="welcome-register-btn"
+                >
+                  <Ionicons name="person-add-outline" size={17} color={colors.primaryDark} style={{ marginRight: 8 }} />
+                  <Text style={styles.registerButtonText}>Crear cuenta</Text>
+                </PressableScale>
+              </View>
             </View>
-
-            <PrimaryButton
-              title="Iniciar Sesión"
-              onPress={submit}
-              loading={loading}
-              testID="login-submit"
-              style={{ marginTop: spacing.xs }}
-            />
-
-            <Pressable
-              onPress={fillAdmin}
-              style={styles.adminPill}
-              accessibilityRole="button"
-              accessibilityLabel="Autocompletar con admin / admin"
-              testID="login-fill-admin"
-            >
-              <Ionicons name="key-outline" size={15} color={colors.primary} />
-              <Text style={styles.adminPillText}>
-                Acceso rápido: <Text style={styles.adminPillBold}>admin</Text> / <Text style={styles.adminPillBold}>admin</Text>
-              </Text>
-            </Pressable>
-          </View>
+          </FadeInView>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -175,44 +191,152 @@ export function WelcomeScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
-    maxWidth: 560,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    maxWidth: 520,
     width: '100%',
     alignSelf: 'center',
     flexGrow: 1,
+    justifyContent: 'center',
+    gap: spacing.md,
+  },
+  topBrandHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 2,
+  },
+  brandLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  brand: {
+    fontFamily: fonts.bold,
+    fontSize: 21,
+    letterSpacing: -0.4,
+    lineHeight: 24,
+    color: colors.text,
+  },
+  brandSub: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 1,
+  },
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: colors.primary,
+  },
+  statusTag: {
+    fontFamily: fonts.semibold,
+    fontSize: 11.5,
+    color: colors.primaryDark,
   },
   hero: {
-    height: 230,
+    height: 235,
     borderRadius: radius.xl,
     overflow: 'hidden',
     backgroundColor: colors.surfaceWarm,
+    borderWidth: 1,
+    borderColor: '#FFDDD9',
     ...shadows.soft,
   },
-  heroImage: { width: '100%', height: '100%', transform: [{ translateY: 35 }, { scale: 1.15 }] },
-  heroOverlay: { position: 'absolute', top: spacing.lg, right: spacing.lg },
-  script: { ...typography.script, fontSize: 24, lineHeight: 26, textAlign: 'right', color: colors.primaryDark },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.lg },
-  brand: { fontFamily: fonts.bold, fontSize: 20, color: colors.text },
-  title: { ...typography.display, marginTop: spacing.md },
-  subtitle: { ...typography.body, marginTop: spacing.xs },
-  formCard: { ...common.card, padding: spacing.lg, marginTop: spacing.lg },
-  eye: { position: 'absolute', right: spacing.sm, top: 40 },
-  adminPill: {
+  heroImage: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: -14,
+    width: '100%',
+    height: '138%',
+  },
+  heroOverlay: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  script: {
+    ...typography.script,
+    fontSize: 20,
+    lineHeight: 21,
+    textAlign: 'right',
+    color: colors.primaryDark,
+  },
+  cardHeader: {
+    marginBottom: spacing.sm,
+  },
+  title: {
+    fontFamily: fonts.bold,
+    fontSize: 19,
+    letterSpacing: -0.3,
+    lineHeight: 24,
+    color: colors.text,
+  },
+  subtitle: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  formCard: {
+    ...common.card,
+    padding: spacing.lg,
+    borderRadius: radius.xl,
+    ...shadows.raised,
+  },
+  registerBox: {
+    marginTop: spacing.xs,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: spacing.xs,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  dividerText: {
+    fontFamily: fonts.medium,
+    fontSize: 11.5,
+    color: colors.textMuted,
+    marginHorizontal: spacing.sm,
+  },
+  registerButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    marginTop: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingVertical: 13,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    backgroundColor: 'transparent',
   },
-  adminPillText: {
-    fontFamily: fonts.regular,
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  adminPillBold: {
-    fontFamily: fonts.bold,
+  registerButtonText: {
+    fontFamily: fonts.semibold,
+    fontSize: 14,
     color: colors.primaryDark,
   },
 });

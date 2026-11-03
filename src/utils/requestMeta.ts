@@ -47,10 +47,10 @@ export const PRIORITY_META: Record<Priority, VisualMeta & { order: number }> = {
 export const PRIORITIES_ASC: Priority[] = ['BAJA', 'MEDIA', 'ALTA', 'URGENTE'];
 
 export const PRIORITY_EFFECT: Record<Priority, string> = {
-  URGENTE: 'Aparece primero en el listado, se cuenta en la alerta de urgencias de Inicio y en el contador de la pestaña Solicitudes.',
-  ALTA: 'Se ordena antes que las solicitudes de prioridad media y baja.',
-  MEDIA: 'Se atiende en orden de llegada, después de las urgentes y altas.',
-  BAJA: 'Se atiende en orden de llegada, después del resto de prioridades.',
+  URGENTE: 'Atención inmediata en consultorio.',
+  ALTA: 'Paciente prioritario con síntomas de cuidado.',
+  MEDIA: 'Atención regular por orden de llegada.',
+  BAJA: 'Control preventivo o servicio programado.',
 };
 
 export const SERVICE_META: Record<ServiceType, VisualMeta & { hint: string }> = {
@@ -87,6 +87,6 @@ export const SERVICE_META: Record<ServiceType, VisualMeta & { hint: string }> = 
 export const SPECIES_META: Record<Species, { label: string; icon: SpeciesIconName; color: string; background: string }> = {
   PERRO: { label: 'Perro', icon: 'dog', color: colors.primaryDark, background: colors.primarySoft },
   GATO: { label: 'Gato', icon: 'cat', color: colors.lavender, background: colors.lavenderSoft },
-  CONEJO: { label: 'Conejo', icon: 'rabbit', color: colors.sage, background: colors.sageSoft },
+  CONEJO: { label: 'Conejo', icon: 'rabbit', color: '#D97706', background: '#FEF3C7' },
   OTRO: { label: 'Otro', icon: 'paw', color: colors.textSecondary, background: colors.track },
 };

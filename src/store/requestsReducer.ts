@@ -14,8 +14,9 @@ export function requestsReducer(state: RequestsState, action: RequestsAction): R
       return {
         ...state,
         requests: state.requests.map((r) =>
-
-          r.id === id ? { ...r, ...changes, id: r.id, fechaRegistro: r.fechaRegistro } : r,
+          r.id === id
+            ? { ...r, ...changes, id: r.id, fechaRegistro: changes.fechaRegistro ?? r.fechaRegistro }
+            : r,
         ),
       };
     }

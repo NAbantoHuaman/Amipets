@@ -20,6 +20,7 @@ import {
   IconTile,
   PressableScale,
   PrimaryButton,
+  PulseView,
   RequestCard,
   SectionHeader,
 } from '../components';
@@ -30,36 +31,30 @@ import { RootStackParamList, TabParamList } from '../navigation/types';
 import { colors, common, fonts, radius, shadows, spacing, typography } from '../theme';
 import { formatLongToday, formatRelative, greeting, isSameDay } from '../utils/date';
 import { SERVICE_META, STATUS_META } from '../utils/requestMeta';
-import { activeUrgent, countByStatus, sortByNewest } from '../utils/requests';
+import { activeUrgent, countByService, countByStatus, sortByNewest } from '../utils/requests';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Home'>,
   NativeStackScreenProps<RootStackParamList>
 >;
 
-const SUMMARY: { status: RequestStatus; label: string }[] = [
-  { status: 'PENDIENTE', label: 'Pendientes' },
-  { status: 'EN_ATENCION', label: 'En atención' },
-  { status: 'FINALIZADO', label: 'Finalizadas' },
+const SUMMARY: { status: RequestStatus; label: string; countColor: string; labelColor: string }[] = [
+  { status: 'PENDIENTE', label: 'Pendientes', countColor: '#18181B', labelColor: '#92400E' },
+  { status: 'EN_ATENCION', label: 'En atención', countColor: '#18181B', labelColor: '#1E40AF' },
+  { status: 'FINALIZADO', label: 'Finalizadas', countColor: '#18181B', labelColor: '#065F46' },
 ];
 
 export function HomeScreen({ navigation }: Props) {
   const { session } = useAuth();
-  const { requests, loading } = useRequests();
+  const { requests, loading, servicePrices } = useRequests();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [readIds, setReadIds] = useState<Record<string, boolean>>({});
 
   const counts = useMemo(() => countByStatus(requests), [requests]);
   const urgent = useMemo(() => activeUrgent(requests), [requests]);
   const latest = useMemo(() => sortByNewest(requests).slice(0, 3), [requests]);
   const todayCount = useMemo(() => requests.filter((r) => isSameDay(r.fechaRegistro, new Date())).length, [requests]);
-
-  const serviceCounts = useMemo(() => {
-    const map: Record<ServiceType, number> = { CONSULTA: 0, VACUNACION: 0, EMERGENCIA: 0, GROOMING: 0 };
-    for (const r of requests) {
-      if (r.estado !== 'FINALIZADO') map[r.tipoServicio] = (map[r.tipoServicio] || 0) + 1;
-    }
-    return map;
-  }, [requests]);
+  const serviceCounts = useMemo(() => countByService(requests), [requests]);
 
   const notifications = useMemo(() => {
     const list: {
@@ -68,6 +63,7 @@ export function HomeScreen({ navigation }: Props) {
       icon: any;
       color: string;
       bg: string;
+      category: string;
       title: string;
       message: string;
       time: string;
@@ -78,21 +74,35 @@ export function HomeScreen({ navigation }: Props) {
         list.push({
           id: `notif-urg-${r.id}`,
           requestId: r.id,
-          icon: 'flame',
+          icon: 'alert-circle',
           color: colors.danger,
           bg: colors.dangerSoft,
-          title: `🚨 Urgencia activa: ${r.mascotaNombre}`,
+          category: 'Urgencia',
+          title: `Urgencia activa: ${r.mascotaNombre}`,
           message: `${r.tipoServicio === 'EMERGENCIA' ? 'Atención de emergencia' : 'Prioridad urgente'}. ${r.descripcion || 'Requiere atención médica inmediata.'}`,
+          time: formatRelative(r.fechaRegistro),
+        });
+      } else if (r.estado === 'EN_ATENCION') {
+        list.push({
+          id: `notif-prog-${r.id}`,
+          requestId: r.id,
+          icon: 'medical',
+          color: colors.inProgress,
+          bg: colors.inProgressSoft,
+          category: 'En consultorio',
+          title: `En atención: ${r.mascotaNombre}`,
+          message: `Atendiendo ${SERVICE_META[r.tipoServicio].label}. Tutor: ${r.clienteNombre}.`,
           time: formatRelative(r.fechaRegistro),
         });
       } else if (r.estado === 'PENDIENTE') {
         list.push({
           id: `notif-pend-${r.id}`,
           requestId: r.id,
-          icon: 'hourglass-outline',
+          icon: 'time',
           color: colors.pending,
           bg: colors.pendingSoft,
-          title: `⏳ En espera: ${r.mascotaNombre}`,
+          category: 'Sala de espera',
+          title: `En espera: ${r.mascotaNombre}`,
           message: `Servicio de ${SERVICE_META[r.tipoServicio].label}. Tutor: ${r.clienteNombre}.`,
           time: formatRelative(r.fechaRegistro),
         });
@@ -100,10 +110,11 @@ export function HomeScreen({ navigation }: Props) {
         list.push({
           id: `notif-done-${r.id}`,
           requestId: r.id,
-          icon: 'checkmark-circle-outline',
+          icon: 'checkmark-circle',
           color: colors.done,
           bg: colors.doneSoft,
-          title: `✅ Atención completada: ${r.mascotaNombre}`,
+          category: 'Alta médica',
+          title: `Atención completada: ${r.mascotaNombre}`,
           message: `Paciente dado de alta tras ${SERVICE_META[r.tipoServicio].label}.`,
           time: formatRelative(r.fechaRegistro),
         });
@@ -112,6 +123,23 @@ export function HomeScreen({ navigation }: Props) {
 
     return list;
   }, [requests]);
+
+  const unreadCount = useMemo(
+    () => notifications.filter((n) => !readIds[n.id]).length,
+    [notifications, readIds],
+  );
+
+  const toggleRead = (id: string) => {
+    setReadIds((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const markAllAsRead = () => {
+    const next: Record<string, boolean> = {};
+    for (const n of notifications) {
+      next[n.id] = true;
+    }
+    setReadIds(next);
+  };
 
   const openDetail = (id: string) => navigation.navigate('RequestDetail', { requestId: id });
   const openCreate = (service?: ServiceType) => navigation.navigate('CreateRequest', service ? { service } : undefined);
@@ -123,20 +151,22 @@ export function HomeScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
         <FadeInView style={styles.header}>
+          <View style={styles.headerAvatar}>
+            <Ionicons name="paw" size={20} color={colors.white} />
+          </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.greeting}>{greeting()}</Text>
-            <Text style={styles.name} numberOfLines={1}>
-              {shortGreetingName(session) || 'Dr. Carlos'} 👋
+            <Text style={styles.greeting}>
+              {greeting()} · {formatLongToday()}
             </Text>
-            <Text style={typography.caption}>
-              {session?.clinicName ?? 'Clínica Veterinaria Amipets'} · {formatLongToday()}
+            <Text style={styles.name} numberOfLines={1}>
+              {shortGreetingName(session) || 'Dr. Carlos'}
             </Text>
           </View>
           <IconButton
             icon="notifications-outline"
             onPress={() => setShowNotifications(true)}
-            accessibilityLabel={notifications.length ? `${notifications.length} notificaciones clínicas` : 'Sin notificaciones'}
-            badge={notifications.length > 0}
+            accessibilityLabel={unreadCount ? `${unreadCount} notificaciones sin leer` : 'Notificaciones clínicas'}
+            badge={unreadCount > 0}
             testID="home-bell"
           />
         </FadeInView>
@@ -145,8 +175,18 @@ export function HomeScreen({ navigation }: Props) {
           <View style={styles.hero}>
             <Image source={require('../../assets/images/hero.jpg')} style={styles.heroImage} resizeMode="cover" />
             <View style={styles.heroText}>
-              <Text style={styles.heroScript}>Mascotas felices,{'\n'}vidas más sanas ♡</Text>
-              <Text style={styles.heroTitle}>Porque ellos{'\n'}merecen lo mejor</Text>
+              <View style={styles.heroPill}>
+                <PulseView minScale={0.7} maxScale={1.3} duration={1300}>
+                  <View style={styles.heroPillDot} />
+                </PulseView>
+                <Text style={styles.heroPillText}>
+                  {todayCount} {todayCount === 1 ? 'atención hoy' : 'atenciones hoy'}
+                </Text>
+              </View>
+              <View>
+                <Text style={styles.heroScript}>Mascotas felices</Text>
+                <Text style={styles.heroTitle}>Cuidado médico{'\n'}en cada consulta</Text>
+              </View>
               <PrimaryButton
                 title="Nueva solicitud"
                 onPress={() => openCreate()}
@@ -155,6 +195,36 @@ export function HomeScreen({ navigation }: Props) {
                 style={styles.heroButton}
               />
             </View>
+          </View>
+        </FadeInView>
+
+        <FadeInView delay={130} style={styles.summarySection}>
+          <View style={styles.summaryRow}>
+            {SUMMARY.map(({ status, label, countColor, labelColor }) => {
+              const meta = STATUS_META[status];
+              return (
+                <PressableScale
+                  key={status}
+                  onPress={() => openRequests({ status })}
+                  style={[styles.summaryCard, { backgroundColor: meta.background, borderColor: meta.color + '45' }]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${counts[status]} ${label}`}
+                  testID={`home-count-${status}`}
+                >
+                  <View style={styles.summaryTopRow}>
+                    <View style={[styles.summaryIcon, { backgroundColor: colors.surface }]}>
+                      <Ionicons name={meta.icon} size={16} color={meta.color} />
+                    </View>
+                    {loading ? (
+                      <ActivityIndicator color={meta.color} style={{ height: 28 }} />
+                    ) : (
+                      <Text style={[styles.summaryCount, { color: countColor }]}>{counts[status]}</Text>
+                    )}
+                  </View>
+                  <Text style={[styles.summaryLabel, { color: labelColor }]}>{label}</Text>
+                </PressableScale>
+              );
+            })}
           </View>
         </FadeInView>
 
@@ -203,9 +273,14 @@ export function HomeScreen({ navigation }: Props) {
                     <Text style={styles.serviceCardTitle} numberOfLines={1}>
                       {meta.label}
                     </Text>
-                    <Text style={styles.serviceCardHint} numberOfLines={1}>
-                      {meta.hint}
-                    </Text>
+                    <View style={styles.serviceFooterRow}>
+                      <Text style={styles.serviceCardHint} numberOfLines={1}>
+                        {meta.hint}
+                      </Text>
+                      <Text style={[styles.servicePriceText, { color: meta.color }]}>
+                        S/. {servicePrices[s].toFixed(0)}
+                      </Text>
+                    </View>
                   </View>
                 </PressableScale>
               );
@@ -222,13 +297,15 @@ export function HomeScreen({ navigation }: Props) {
               accessibilityLabel={`${urgent.length} urgencias activas. Ver solicitudes urgentes`}
               testID="home-urgent"
             >
-              <IconTile icon="flame" color={colors.white} background={colors.danger} size={44} />
+              <PulseView minScale={0.88} maxScale={1.12} duration={1100}>
+                <IconTile icon="alert-circle" color={colors.white} background={colors.danger} size={40} />
+              </PulseView>
               <View style={{ flex: 1 }}>
                 <Text style={styles.alertTitle}>
                   {urgent.length} {urgent.length === 1 ? 'urgencia activa' : 'urgencias activas'}
                 </Text>
                 <Text style={styles.alertText} numberOfLines={1}>
-                  {urgent.map((u) => u.mascotaNombre).join(', ')} {urgent.length === 1 ? 'necesita' : 'necesitan'} atención inmediata
+                  Pacientes: {urgent.map((u) => u.mascotaNombre).join(', ')}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.danger} />
@@ -236,43 +313,8 @@ export function HomeScreen({ navigation }: Props) {
           </FadeInView>
         )}
 
-        <FadeInView delay={280} style={styles.section}>
-          <SectionHeader title="Resumen de atenciones" actionLabel="Ver todo" onAction={() => openRequests()} />
-          <View style={styles.summaryRow}>
-            {SUMMARY.map(({ status, label }) => {
-              const meta = STATUS_META[status];
-              return (
-                <PressableScale
-                  key={status}
-                  onPress={() => openRequests({ status })}
-                  style={[styles.summaryCard, { backgroundColor: meta.background }]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${counts[status]} ${label}`}
-                  testID={`home-count-${status}`}
-                >
-                  <View style={styles.summaryIcon}>
-                    <Ionicons name={meta.icon} size={18} color={meta.color} />
-                  </View>
-                  {loading ? (
-                    <ActivityIndicator color={meta.color} style={{ height: 34 }} />
-                  ) : (
-                    <Text style={[styles.summaryCount, { color: meta.color }]}>{counts[status]}</Text>
-                  )}
-                  <Text style={styles.summaryLabel}>{label}</Text>
-                </PressableScale>
-              );
-            })}
-          </View>
-          <View style={styles.todayRow}>
-            <Ionicons name="calendar-outline" size={14} color={colors.textMuted} />
-            <Text style={typography.caption}>
-              {todayCount} {todayCount === 1 ? 'solicitud registrada' : 'solicitudes registradas'} hoy
-            </Text>
-          </View>
-        </FadeInView>
-
-        <FadeInView delay={340} style={styles.section}>
-          <SectionHeader title="Últimas atenciones" actionLabel="Ver todas" onAction={() => openRequests()} />
+        <FadeInView delay={300} style={styles.section}>
+          <SectionHeader title="Ingresos recientes" actionLabel="Directorio completo" onAction={() => openRequests()} />
           {loading ? (
             <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.xl }} />
           ) : latest.length === 0 ? (
@@ -306,56 +348,95 @@ export function HomeScreen({ navigation }: Props) {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderTitleRow}>
-                <Ionicons name="notifications" size={20} color={colors.primaryDark} />
-                <Text style={styles.modalTitle}>Notificaciones Clínicas</Text>
-                {notifications.length > 0 && (
-                  <View style={styles.modalBadge}>
-                    <Text style={styles.modalBadgeText}>{notifications.length}</Text>
-                  </View>
-                )}
+                <View style={styles.modalHeaderIconWrap}>
+                  <Ionicons name="notifications-outline" size={18} color={colors.primaryDark} />
+                </View>
+                <View>
+                  <Text style={styles.modalTitle}>Avisos Clínicos</Text>
+                  <Text style={styles.modalSubtitle}>
+                    {unreadCount > 0
+                      ? `${unreadCount} ${unreadCount === 1 ? 'pendiente de revisión' : 'pendientes de revisión'}`
+                      : 'Todo revisado al día'}
+                  </Text>
+                </View>
               </View>
-              <PressableScale
-                onPress={() => setShowNotifications(false)}
-                style={styles.closeButton}
-                accessibilityRole="button"
-                accessibilityLabel="Cerrar notificaciones"
-              >
-                <Ionicons name="close" size={22} color={colors.textSecondary} />
-              </PressableScale>
+              <View style={styles.modalHeaderActions}>
+                {notifications.length > 0 && unreadCount > 0 && (
+                  <PressableScale
+                    onPress={markAllAsRead}
+                    style={styles.markAllPill}
+                    accessibilityRole="button"
+                    accessibilityLabel="Marcar todas las notificaciones como leídas"
+                  >
+                    <Ionicons name="checkmark-done" size={15} color={colors.done} />
+                    <Text style={styles.markAllText}>Leídas</Text>
+                  </PressableScale>
+                )}
+                <PressableScale
+                  onPress={() => setShowNotifications(false)}
+                  style={styles.closeButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cerrar notificaciones"
+                >
+                  <Ionicons name="close" size={20} color={colors.textSecondary} />
+                </PressableScale>
+              </View>
             </View>
 
             <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
               {notifications.length === 0 ? (
                 <EmptyState
                   compact
-                  icon="notifications-off-outline"
-                  title="Sin notificaciones pendientes"
-                  message="Las alertas de emergencias, turnos en espera y altas médicas aparecerán aquí."
+                  icon="checkmark-done-circle-outline"
+                  title="Sin avisos pendientes"
+                  message="Los ingresos, atenciones en curso y altas médicas se registrarán en este panel."
                 />
               ) : (
                 <View style={{ gap: spacing.sm, paddingVertical: spacing.xs }}>
-                  {notifications.map((n) => (
-                    <PressableScale
-                      key={n.id}
-                      onPress={() => {
-                        setShowNotifications(false);
-                        openDetail(n.requestId);
-                      }}
-                      style={styles.notifCard}
-                      accessibilityRole="button"
-                      accessibilityLabel={n.title}
-                    >
-                      <View style={[styles.notifIcon, { backgroundColor: n.bg }]}>
-                        <Ionicons name={n.icon} size={20} color={n.color} />
-                      </View>
-                      <View style={{ flex: 1, gap: 2 }}>
-                        <Text style={styles.notifTitle}>{n.title}</Text>
-                        <Text style={styles.notifMessage} numberOfLines={2}>{n.message}</Text>
-                        <Text style={styles.notifTime}>{n.time}</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-                    </PressableScale>
-                  ))}
+                  {notifications.map((n) => {
+                    const isRead = Boolean(readIds[n.id]);
+                    return (
+                      <PressableScale
+                        key={n.id}
+                        onPress={() => {
+                          setReadIds((prev) => ({ ...prev, [n.id]: true }));
+                          setShowNotifications(false);
+                          openDetail(n.requestId);
+                        }}
+                        style={[styles.notifCard, isRead && styles.notifCardRead]}
+                        accessibilityRole="button"
+                        accessibilityLabel={n.title}
+                      >
+                        <View style={[styles.notifIcon, { backgroundColor: n.bg }]}>
+                          <Ionicons name={n.icon} size={19} color={n.color} />
+                        </View>
+                        <View style={{ flex: 1, gap: 2 }}>
+                          <View style={styles.notifTopMetaRow}>
+                            <Text style={[styles.notifCategory, { color: n.color }]}>{n.category}</Text>
+                            <Text style={styles.notifTime}>{n.time}</Text>
+                          </View>
+                          <Text style={[styles.notifTitle, isRead && styles.notifTitleRead]}>{n.title}</Text>
+                          <Text style={styles.notifMessage} numberOfLines={2}>{n.message}</Text>
+                        </View>
+                        <PressableScale
+                          onPress={() => toggleRead(n.id)}
+                          style={[
+                            styles.checkActionBtn,
+                            isRead ? styles.checkActionBtnActive : styles.checkActionBtnIdle,
+                          ]}
+                          accessibilityRole="checkbox"
+                          accessibilityState={{ checked: isRead }}
+                          accessibilityLabel={isRead ? 'Marcar como no leído' : 'Marcar como revisado'}
+                        >
+                          <Ionicons
+                            name="checkmark"
+                            size={15}
+                            color={isRead ? colors.white : colors.textMuted}
+                          />
+                        </PressableScale>
+                      </PressableScale>
+                    );
+                  })}
                 </View>
               )}
             </ScrollView>
@@ -368,22 +449,80 @@ export function HomeScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingBottom: spacing.xxl, maxWidth: 640, width: '100%', alignSelf: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.lg },
-  greeting: { fontFamily: fonts.regular, fontSize: 14, color: colors.textSecondary },
-  name: { ...typography.display, marginVertical: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingTop: spacing.xs,
+    marginBottom: spacing.md + 4,
+  },
+  headerAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.soft,
+  },
+  greeting: {
+    fontFamily: fonts.medium,
+    fontSize: 12.5,
+    color: colors.textMuted,
+    marginBottom: 3,
+  },
+  name: {
+    ...typography.display,
+    fontSize: 22,
+    lineHeight: 27,
+    marginTop: 2,
+  },
 
   hero: {
-    height: 186,
+    height: 196,
     borderRadius: radius.xl,
     overflow: 'hidden',
     backgroundColor: colors.surfaceWarm,
-    ...shadows.soft,
+    borderWidth: 1,
+    borderColor: '#FFDDD9',
+    ...shadows.raised,
   },
-  heroImage: { position: 'absolute', right: -40, top: 0, bottom: 0, width: '115%', height: '100%' },
-  heroText: { flex: 1, padding: spacing.lg, justifyContent: 'space-between', maxWidth: '62%' },
-  heroScript: { ...typography.script, fontSize: 17, lineHeight: 18, color: colors.textSecondary, transform: [{ rotate: '-4deg' }] },
-  heroTitle: { fontFamily: fonts.semibold, fontSize: 19, lineHeight: 24, color: colors.text },
-  heroButton: { alignSelf: 'flex-start', minHeight: 40 },
+  heroImage: { position: 'absolute', right: -36, top: 0, bottom: 0, width: '112%', height: '100%' },
+  heroText: { flex: 1, padding: spacing.lg, justifyContent: 'space-between', maxWidth: '64%' },
+  heroPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+  },
+  heroPillDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.primary,
+  },
+  heroPillText: {
+    fontFamily: fonts.semibold,
+    fontSize: 11,
+    color: colors.text,
+  },
+  heroScript: { ...typography.script, fontSize: 19, lineHeight: 20, color: colors.primaryDark },
+  heroTitle: { fontFamily: fonts.bold, fontSize: 19, lineHeight: 23, letterSpacing: -0.3, color: colors.text },
+  heroButton: { alignSelf: 'flex-start', minHeight: 40, borderRadius: radius.pill },
+
+  summarySection: {
+    marginTop: spacing.md,
+  },
+  summaryTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
 
   servicesGrid: {
     flexDirection: 'row',
@@ -395,7 +534,7 @@ const styles = StyleSheet.create({
   },
   serviceSquareCard: {
     width: '48.5%',
-    minHeight: 112,
+    minHeight: 118,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
@@ -407,60 +546,76 @@ const styles = StyleSheet.create({
   serviceCardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: spacing.xs,
   },
   serviceIconContainer: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.md,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   serviceBadgePill: {
     backgroundColor: colors.surfaceMuted,
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 3.5,
     borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignSelf: 'flex-start',
   },
   serviceBadgeEmergency: {
     backgroundColor: colors.dangerSoft,
+    borderColor: colors.dangerBorder,
   },
   serviceBadgeText: {
-    fontFamily: fonts.medium,
+    fontFamily: fonts.semibold,
     fontSize: 10.5,
     color: colors.textSecondary,
   },
   serviceCardBottom: {
-    gap: 2,
+    gap: 3,
   },
   serviceCardTitle: {
     fontFamily: fonts.bold,
-    fontSize: 13.5,
+    fontSize: 14,
+    letterSpacing: -0.2,
     color: colors.text,
+  },
+  serviceFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 4,
   },
   serviceCardHint: {
     fontFamily: fonts.regular,
     fontSize: 11,
     color: colors.textMuted,
+    flex: 1,
+  },
+  servicePriceText: {
+    fontFamily: fonts.bold,
+    fontSize: 12,
+    fontVariant: ['tabular-nums'],
   },
 
   alert: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: spacing.xl,
-    padding: spacing.sm,
+    marginTop: spacing.lg,
+    padding: spacing.md,
     borderRadius: radius.lg,
     backgroundColor: colors.dangerSoft,
     borderWidth: 1,
-    borderColor: '#F5D2CE',
+    borderColor: colors.dangerBorder,
   },
-  alertTitle: { fontFamily: fonts.semibold, fontSize: 14, color: colors.danger },
-  alertText: { fontFamily: fonts.regular, fontSize: 12, color: '#9A3A36' },
+  alertTitle: { fontFamily: fonts.bold, fontSize: 14, color: colors.danger },
+  alertText: { fontFamily: fonts.medium, fontSize: 12, color: colors.dangerStrong },
 
-  section: { marginTop: spacing.xl },
+  section: { marginTop: spacing.lg },
 
   summaryRow: {
     flexDirection: 'row',
@@ -471,27 +626,26 @@ const styles = StyleSheet.create({
   summaryCard: {
     width: '31.5%',
     borderRadius: radius.lg,
-    paddingHorizontal: 6,
+    paddingHorizontal: 12,
     paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
+    justifyContent: 'space-between',
+    borderWidth: 1.5,
+    gap: 6,
+    ...shadows.soft,
   },
   summaryIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 10,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
   },
-  summaryCount: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 28 },
+  summaryCount: { fontFamily: fonts.bold, fontSize: 24, lineHeight: 28, fontVariant: ['tabular-nums'] },
   summaryLabel: {
-    fontFamily: fonts.medium,
-    fontSize: 11,
-    color: colors.textSecondary,
-    textAlign: 'center',
+    fontFamily: fonts.bold,
+    fontSize: 12,
+    letterSpacing: -0.1,
   },
   todayRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: spacing.sm },
   emptyCard: { ...common.card },
@@ -523,26 +677,53 @@ const styles = StyleSheet.create({
   modalHeaderTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+    flex: 1,
+  },
+  modalHeaderIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalTitle: {
     fontFamily: fonts.bold,
-    fontSize: 18,
+    fontSize: 17,
     color: colors.text,
   },
-  modalBadge: {
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+  modalSubtitle: {
+    fontFamily: fonts.regular,
+    fontSize: 11.5,
+    color: colors.textMuted,
+  },
+  modalHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  markAllPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.doneSoft,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: radius.pill,
   },
-  modalBadgeText: {
-    fontFamily: fonts.bold,
-    fontSize: 12,
-    color: colors.primaryDark,
+  markAllText: {
+    fontFamily: fonts.semibold,
+    fontSize: 11.5,
+    color: colors.done,
   },
   closeButton: {
-    padding: 4,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalList: {
     marginTop: spacing.xs,
@@ -550,24 +731,44 @@ const styles = StyleSheet.create({
   notifCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.surfaceMuted,
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
     padding: spacing.md,
     borderRadius: radius.md,
     borderWidth: 1,
+    borderColor: colors.borderStrong,
+  },
+  notifCardRead: {
+    backgroundColor: colors.surfaceMuted,
     borderColor: colors.border,
+    opacity: 0.85,
   },
   notifIcon: {
     width: 38,
     height: 38,
-    borderRadius: 19,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  notifTopMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  notifCategory: {
+    fontFamily: fonts.semibold,
+    fontSize: 10.5,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
   notifTitle: {
-    fontFamily: fonts.bold,
+    fontFamily: fonts.semibold,
     fontSize: 13.5,
     color: colors.text,
+  },
+  notifTitleRead: {
+    fontFamily: fonts.medium,
+    color: colors.textSecondary,
   },
   notifMessage: {
     fontFamily: fonts.regular,
@@ -576,9 +777,24 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   notifTime: {
-    fontFamily: fonts.medium,
+    fontFamily: fonts.regular,
     fontSize: 11,
     color: colors.textMuted,
-    marginTop: 2,
+  },
+  checkActionBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+  },
+  checkActionBtnIdle: {
+    backgroundColor: colors.surface,
+    borderColor: colors.borderStrong,
+  },
+  checkActionBtnActive: {
+    backgroundColor: colors.done,
+    borderColor: colors.done,
   },
 });

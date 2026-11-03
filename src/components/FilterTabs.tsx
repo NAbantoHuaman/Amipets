@@ -99,18 +99,18 @@ const styles = StyleSheet.create({
   indicator: { height: 2.5, width: '60%', borderRadius: 2, backgroundColor: 'transparent', marginBottom: -1 },
   indicatorActive: { backgroundColor: colors.primary },
 
-  chipsRow: { gap: spacing.xs, paddingVertical: 2 },
+  chipsRow: { gap: 6, paddingVertical: 2 },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: spacing.sm,
-    height: 34,
-    borderRadius: radius.pill,
+    paddingHorizontal: 11,
+    height: 32,
+    borderRadius: radius.sm,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
   chipLabel: { fontFamily: fonts.medium, fontSize: 12, color: colors.textSecondary },
-  chipLabelActive: { color: colors.white },
+  chipLabelActive: { color: colors.white, fontFamily: fonts.semibold },
 });

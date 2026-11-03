@@ -3,6 +3,7 @@ import { DefaultTheme, NavigationContainer, Theme } from '@react-navigation/nati
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { CreateRequestScreen } from '../screens/CreateRequestScreen';
+import { RegisterScreen } from '../screens/RegisterScreen';
 import { RequestDetailScreen } from '../screens/RequestDetailScreen';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { colors } from '../theme';
@@ -41,7 +42,10 @@ export function RootNavigator() {
             />
           </>
         ) : (
-          <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ animation: 'fade' }} />
+          <>
+            <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ animation: 'fade' }} />
+            <Stack.Screen name="Register" component={RegisterScreen} options={{ animation: 'slide_from_right' }} />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

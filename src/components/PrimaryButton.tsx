@@ -78,16 +78,16 @@ export function PrimaryButton({
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 54,
-    borderRadius: radius.pill,
+    minHeight: 48,
+    borderRadius: radius.md,
     borderWidth: 1,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  compact: { minHeight: 44, paddingHorizontal: spacing.md },
+  compact: { minHeight: 40, paddingHorizontal: spacing.md },
   content: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  label: { fontFamily: fonts.semibold, fontSize: 15 },
-  labelCompact: { fontSize: 13 },
-  trailing: { marginLeft: spacing.xs },
+  label: { fontFamily: fonts.semibold, fontSize: 14, letterSpacing: -0.1 },
+  labelCompact: { fontSize: 12.5 },
+  trailing: { marginLeft: 4 },
 });

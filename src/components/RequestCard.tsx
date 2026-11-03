@@ -50,8 +50,9 @@ function RequestCardBase({ request, onPress }: Props) {
         <View style={styles.bottomRow}>
           <View style={styles.dateRow}>
             <Ionicons name="time-outline" size={12} color={colors.textMuted} />
-            <Text style={styles.date}>
+            <Text style={styles.date} numberOfLines={1}>
               {formatRelative(request.fechaRegistro)} · {formatTime(request.fechaRegistro)}
+              {request.registradoPor ? ` · ${request.registradoPor}` : ''}
             </Text>
           </View>
           <StatusChip status={request.estado} />

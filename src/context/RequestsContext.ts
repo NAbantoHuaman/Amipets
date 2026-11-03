@@ -1,14 +1,23 @@
 import { createContext, useContext } from 'react';
-import { RequestChanges, RequestInput, RequestStatus, VeterinaryRequest } from '../models/request';
+import {
+  RequestChanges,
+  RequestInput,
+  RequestStatus,
+  ServicePrices,
+  ServiceType,
+  VeterinaryRequest,
+} from '../models/request';
 
 export interface RequestsContextValue {
   requests: VeterinaryRequest[];
   loading: boolean;
+  servicePrices: ServicePrices;
   getRequestById: (id: string) => VeterinaryRequest | undefined;
   createRequest: (input: RequestInput) => VeterinaryRequest;
   updateRequest: (id: string, changes: RequestChanges) => void;
   changeStatus: (id: string, status: RequestStatus) => void;
   deleteRequest: (id: string) => void;
+  updateServicePrice: (service: ServiceType, price: number) => void;
   resetDemo: () => void;
   clearAll: () => void;
 }

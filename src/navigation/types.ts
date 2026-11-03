@@ -1,5 +1,5 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
-import { Priority, RequestStatus, ServiceType } from '../models/request';
+import { Priority, RequestStatus, ServiceType } from '../domain/models/request';
 
 export type TabParamList = {
   Home: undefined;
@@ -7,7 +7,6 @@ export type TabParamList = {
     | {
         status?: RequestStatus | 'TODOS';
         priority?: Priority | 'TODAS';
-
         nonce?: number;
       }
     | undefined;
@@ -17,16 +16,14 @@ export type TabParamList = {
 
 export type RootStackParamList = {
   Welcome: undefined;
+  Register: undefined;
   Main: NavigatorScreenParams<TabParamList> | undefined;
-
-  CreateRequest: { requestId?: string; service?: ServiceType } | undefined;
+  CreateRequest: { requestId?: string; service?: ServiceType; initialDate?: string } | undefined;
   RequestDetail: { requestId: string };
 };
 
 declare global {
-
   namespace ReactNavigation {
-
     interface RootParamList extends RootStackParamList {}
   }
 }

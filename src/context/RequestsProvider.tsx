@@ -1,5 +1,13 @@
-import React, { ReactNode, useCallback, useMemo, useReducer } from 'react';
-import { RequestChanges, RequestInput, RequestStatus, VeterinaryRequest } from '../models/request';
+import React, { ReactNode, useCallback, useEffect, useMemo, useReducer, useState } from 'react';
+import {
+  RequestChanges,
+  RequestInput,
+  RequestStatus,
+  ServicePrices,
+  ServiceType,
+  VeterinaryRequest,
+} from '../models/request';
+import { requestRepository } from '../infrastructure/repositories/InMemoryRequestRepository';
 import { actions } from '../store/actions';
 import { initialState } from '../store/initialState';
 import { requestsReducer } from '../store/requestsReducer';
@@ -23,7 +31,17 @@ function sanitize<T extends Partial<RequestInput>>(input: T): T {
 }
 
 export function RequestsProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(requestsReducer, initialState);
+  const [state, dispatch] = useReducer(requestsReducer, initialState, (init) => ({
+    ...init,
+    requests: requestRepository.getAllSync(),
+  }));
+  const [servicePrices, setServicePrices] = useState<ServicePrices>(() =>
+    requestRepository.getServicePrices()
+  );
+
+  useEffect(() => {
+    requestRepository.saveAllSync(state.requests);
+  }, [state.requests]);
 
   const getRequestById = useCallback(
     (id: string) => state.requests.find((r) => r.id === id),
@@ -31,11 +49,12 @@ export function RequestsProvider({ children }: { children: ReactNode }) {
   );
 
   const createRequest = useCallback((input: RequestInput) => {
+    const sanitized = sanitize(input);
     const request: VeterinaryRequest = {
-      ...sanitize(input),
+      ...sanitized,
       id: generateId(),
       estado: 'PENDIENTE',
-      fechaRegistro: new Date().toISOString(),
+      fechaRegistro: sanitized.fechaRegistro ?? new Date().toISOString(),
     };
     dispatch(actions.create(request));
     return request;
@@ -53,19 +72,37 @@ export function RequestsProvider({ children }: { children: ReactNode }) {
   const clearAll = useCallback(() => dispatch(actions.clearAll()), []);
   const resetDemo = useCallback(() => dispatch(actions.clearAll()), []);
 
+  const updateServicePrice = useCallback((service: ServiceType, price: number) => {
+    const next = requestRepository.updateServicePrice(service, price);
+    setServicePrices(next);
+  }, []);
+
   const value = useMemo<RequestsContextValue>(
     () => ({
       requests: state.requests,
       loading: state.loading,
+      servicePrices,
       getRequestById,
       createRequest,
       updateRequest,
       changeStatus,
       deleteRequest,
+      updateServicePrice,
       resetDemo,
       clearAll,
     }),
-    [state, getRequestById, createRequest, updateRequest, changeStatus, deleteRequest, resetDemo, clearAll],
+    [
+      state,
+      servicePrices,
+      getRequestById,
+      createRequest,
+      updateRequest,
+      changeStatus,
+      deleteRequest,
+      updateServicePrice,
+      resetDemo,
+      clearAll,
+    ],
   );
 
   return <RequestsContext.Provider value={value}>{children}</RequestsContext.Provider>;

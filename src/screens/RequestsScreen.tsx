@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { EmptyState, FilterOption, FilterTabs, PressableScale, RequestCard, SearchBar } from '../components';
+import { EmptyState, FadeInView, FilterOption, FilterTabs, PressableScale, RequestCard, SearchBar } from '../components';
 import { useRequests } from '../context/RequestsContext';
 import { Priority, PRIORITIES, RequestStatus, REQUEST_STATUSES } from '../models/request';
 import { RootStackParamList, TabParamList } from '../navigation/types';
@@ -68,81 +68,101 @@ export function RequestsScreen({ navigation, route }: Props) {
   const openCreate = () => navigation.navigate('CreateRequest');
 
   const renderEmpty = () => {
-    if (loading) return <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xxl }} />;
+    if (loading) {
+      return (
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator color={colors.primary} size="large" />
+        </View>
+      );
+    }
     if (requests.length === 0) {
       return (
-        <EmptyState
-          icon="clipboard-outline"
-          title="No hay solicitudes registradas"
-          message="Cuando llegue un paciente, registra su solicitud para hacer seguimiento de su atención."
-          actionLabel="Crear solicitud"
-          onAction={openCreate}
-        />
+        <View style={styles.emptyContainer}>
+          <EmptyState
+            icon="clipboard-outline"
+            title="No hay solicitudes registradas"
+            message="Cuando llegue un paciente, registra su solicitud para hacer seguimiento de su atención."
+            actionLabel="Crear solicitud"
+            onAction={openCreate}
+          />
+        </View>
       );
     }
     return (
-      <EmptyState
-        icon="search-outline"
-        title="Sin resultados"
-        message={
-          query
-            ? `No encontramos solicitudes para “${query.trim()}”. Prueba con el nombre de la mascota, del cliente o el teléfono.`
-            : 'Ninguna solicitud coincide con los filtros seleccionados.'
-        }
-        actionLabel="Limpiar filtros"
-        onAction={clearFilters}
-      />
+      <View style={styles.emptyContainer}>
+        <EmptyState
+          icon="search-outline"
+          title="Sin resultados"
+          message={
+            query
+              ? `No encontramos solicitudes para “${query.trim()}”. Prueba con el nombre de la mascota, del cliente o el teléfono.`
+              : 'Ninguna solicitud coincide con los filtros seleccionados.'
+          }
+          actionLabel="Limpiar filtros"
+          onAction={clearFilters}
+        />
+      </View>
     );
   };
 
   return (
     <SafeAreaView style={common.screen} edges={['top']}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.headerSubtitle}>Admisión y Triaje</Text>
-            <Text style={typography.title} accessibilityRole="header">
-              Solicitudes
-            </Text>
-          </View>
-          <PressableScale
-            onPress={openCreate}
-            style={styles.addButton}
-            accessibilityRole="button"
-            accessibilityLabel="Nueva solicitud"
-            testID="requests-add"
-          >
-            <View style={styles.addIcon}>
-              <Ionicons name="add" size={16} color={colors.primary} />
+        <FadeInView delay={30} distance={8}>
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.headerSubtitle}>Admisión y Triaje</Text>
+              <Text style={typography.title} accessibilityRole="header">
+                Solicitudes
+              </Text>
             </View>
-            <Text style={styles.addLabel}>Nueva</Text>
-          </PressableScale>
-        </View>
-
-        <SearchBar
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Buscar por mascota, cliente o teléfono"
-          testID="requests-search"
-        />
-
-        <View style={styles.filters}>
-          <FilterTabs options={statusOptions} value={status} onChange={setStatus} accessibilityLabel="Estado" />
-          <View style={{ marginTop: spacing.sm }}>
-            <FilterTabs
-              options={priorityOptions}
-              value={priority}
-              onChange={setPriority}
-              variant="chips"
-              accessibilityLabel="Prioridad"
-            />
+            <PressableScale
+              onPress={openCreate}
+              style={styles.addButton}
+              accessibilityRole="button"
+              accessibilityLabel="Nueva solicitud"
+              testID="requests-add"
+            >
+              <View style={styles.addIcon}>
+                <Ionicons name="add" size={16} color={colors.primary} />
+              </View>
+              <Text style={styles.addLabel}>Nueva</Text>
+            </PressableScale>
           </View>
-        </View>
+        </FadeInView>
+
+        <FadeInView delay={70} distance={10}>
+          <SearchBar
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Buscar por mascota, cliente o teléfono"
+            testID="requests-search"
+          />
+        </FadeInView>
+
+        <FadeInView delay={110} distance={10}>
+          <View style={styles.filters}>
+            <FilterTabs options={statusOptions} value={status} onChange={setStatus} accessibilityLabel="Estado" />
+            <View style={{ marginTop: spacing.sm }}>
+              <FilterTabs
+                options={priorityOptions}
+                value={priority}
+                onChange={setPriority}
+                variant="chips"
+                accessibilityLabel="Prioridad"
+              />
+            </View>
+          </View>
+        </FadeInView>
 
         <FlatList
           data={visible}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <RequestCard request={item} onPress={openDetail} />}
+          renderItem={({ item, index }) => (
+            <FadeInView delay={Math.min(index * 35, 180)} distance={6}>
+              <RequestCard request={item} onPress={openDetail} />
+            </FadeInView>
+          )}
           ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
           ListHeaderComponent={
             visible.length > 0 ? (
@@ -165,7 +185,7 @@ export function RequestsScreen({ navigation, route }: Props) {
               </Text>
             ) : undefined
           }
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, visible.length === 0 && styles.listEmpty]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         />
@@ -204,6 +224,13 @@ const styles = StyleSheet.create({
   addLabel: { fontFamily: fonts.medium, fontSize: 14, color: colors.text },
   filters: { marginTop: spacing.md },
   list: { paddingTop: spacing.md, paddingBottom: spacing.xxl, flexGrow: 1 },
+  listEmpty: { flexGrow: 1, justifyContent: 'center' },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+  },
   resultsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   sortHint: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   footer: {

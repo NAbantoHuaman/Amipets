@@ -12,6 +12,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   ConfirmDialog,
   EmptyState,
+  FadeInView,
   IconTile,
   PetAvatar,
   PressableScale,
@@ -42,7 +43,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'RequestDetail'>;
 export function RequestDetailScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { requestId } = route.params;
-  const { getRequestById, changeStatus, updateRequest, deleteRequest } = useRequests();
+  const { getRequestById, changeStatus, updateRequest, deleteRequest, servicePrices } = useRequests();
   const { showToast } = useToast();
 
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -120,6 +121,17 @@ export function RequestDetailScreen({ navigation, route }: Props) {
     });
   };
 
+  const openWhatsApp = () => {
+    const digits = request.telefono.replace(/\D/g, '');
+    const intlPhone = digits.length === 9 && digits.startsWith('9') ? `51${digits}` : digits;
+    const text = encodeURIComponent(
+      `Hola ${request.clienteNombre}, te escribimos de la Clínica Veterinaria Amipets respecto a la atención de ${request.mascotaNombre} (${shortCode(request.id)} - ${service.label}). Estado actual: ${STATUS_META[request.estado].label}.`
+    );
+    Linking.openURL(`https://wa.me/${intlPhone}?text=${text}`).catch(() => {
+      showToast('error', 'No se pudo abrir WhatsApp', `Número: ${request.telefono}`);
+    });
+  };
+
   const nextAction =
     request.estado === 'PENDIENTE'
       ? { label: 'Iniciar atención médica', status: 'EN_ATENCION' as RequestStatus, icon: 'play' as const }
@@ -151,214 +163,246 @@ export function RequestDetailScreen({ navigation, route }: Props) {
         showsVerticalScrollIndicator={false}
       >
 
-        <View style={styles.heroCard}>
-          <View style={styles.heroTopRow}>
-            <PetAvatar species={request.especie} size={64} shape="rounded" />
-            <View style={styles.heroTextCol}>
-              <View style={styles.nameAndCodeRow}>
-                <Text style={styles.petName} numberOfLines={1}>
-                  {request.mascotaNombre}
-                </Text>
-                <View style={styles.codeBadge}>
-                  <Text style={styles.codeText}>{shortCode(request.id)}</Text>
+        <FadeInView delay={40} distance={10}>
+          <View style={styles.heroCard}>
+            <View style={styles.heroTopRow}>
+              <PetAvatar species={request.especie} size={64} shape="rounded" />
+              <View style={styles.heroTextCol}>
+                <View style={styles.nameAndCodeRow}>
+                  <Text style={styles.petName} numberOfLines={1}>
+                    {request.mascotaNombre}
+                  </Text>
+                  <View style={styles.codeBadge}>
+                    <Text style={styles.codeText}>{shortCode(request.id)}</Text>
+                  </View>
                 </View>
+                <Text style={styles.petSpeciesSubtitle}>
+                  {species?.label ?? 'Mascota'} · Registrado {formatRelative(request.fechaRegistro)}
+                </Text>
               </View>
-              <Text style={styles.petSpeciesSubtitle}>
-                {species?.label ?? 'Mascota'} · Registrado {formatRelative(request.fechaRegistro)}
-              </Text>
+            </View>
+
+            <View style={styles.chipsRow}>
+              <ServiceChip service={request.tipoServicio} />
+              <PriorityChip priority={request.prioridad} />
+              <StatusChip status={request.estado} />
             </View>
           </View>
+        </FadeInView>
 
-          <View style={styles.chipsRow}>
-            <ServiceChip service={request.tipoServicio} />
-            <PriorityChip priority={request.prioridad} />
-            <StatusChip status={request.estado} />
-          </View>
-        </View>
+        <FadeInView delay={90} distance={12}>
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeaderRow}>
+              <Ionicons name="swap-horizontal-outline" size={18} color={colors.primary} />
+              <Text style={typography.heading}>Estado de la Atención</Text>
+            </View>
 
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeaderRow}>
-            <Ionicons name="swap-horizontal-outline" size={18} color={colors.primary} />
-            <Text style={typography.heading}>Estado de la Atención</Text>
-          </View>
-          <Text style={styles.sectionCaption}>
-            Actualiza el progreso clínico del paciente en el consultorio:
-          </Text>
-
-          <View style={styles.statusOptionsList}>
-            {REQUEST_STATUSES.map((st) => {
-              const active = request.estado === st;
-              const meta = STATUS_META[st];
-              return (
-                <PressableScale
-                  key={st}
-                  onPress={() => handleStatusChange(st)}
-                  style={[
-                    styles.statusOptionCard,
-                    active && { borderColor: meta.color, backgroundColor: meta.background },
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Cambiar estado a ${meta.label}`}
-                  testID={`detail-status-${st}`}
-                >
-                  <View
+            <View style={styles.statusOptionsList}>
+              {REQUEST_STATUSES.map((st) => {
+                const active = request.estado === st;
+                const meta = STATUS_META[st];
+                return (
+                  <PressableScale
+                    key={st}
+                    onPress={() => handleStatusChange(st)}
                     style={[
-                      styles.statusOptionIconBox,
-                      { backgroundColor: active ? meta.color : colors.surfaceMuted },
+                      styles.statusOptionCard,
+                      active && { borderColor: meta.color, backgroundColor: meta.background },
                     ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Cambiar estado a ${meta.label}`}
+                    testID={`detail-status-${st}`}
+                  >
+                    <View
+                      style={[
+                        styles.statusOptionIconBox,
+                        { backgroundColor: active ? meta.color : colors.surfaceMuted },
+                      ]}
+                    >
+                      <Ionicons
+                        name={meta.icon}
+                        size={18}
+                        color={active ? colors.white : meta.color}
+                      />
+                    </View>
+                    <View style={styles.statusOptionTextCol}>
+                      <Text
+                        style={[
+                          styles.statusOptionTitle,
+                          active && { color: meta.color, fontFamily: fonts.bold },
+                        ]}
+                      >
+                        {meta.label}
+                      </Text>
+                      <Text style={styles.statusOptionSubtitle}>{meta.description}</Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.statusOptionRadio,
+                        active && { borderColor: meta.color, backgroundColor: meta.color },
+                      ]}
+                    >
+                      {active && <Ionicons name="checkmark" size={14} color={colors.white} />}
+                    </View>
+                  </PressableScale>
+                );
+              })}
+            </View>
+          </View>
+        </FadeInView>
+
+        <FadeInView delay={140} distance={14}>
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeaderRow}>
+              <Ionicons name="flag-outline" size={18} color={colors.primary} />
+              <Text style={typography.heading}>Nivel de Prioridad Médica</Text>
+            </View>
+
+            <View style={styles.priorityGrid}>
+              {PRIORITIES_ASC.map((pr) => {
+                const active = request.prioridad === pr;
+                const meta = PRIORITY_META[pr];
+                return (
+                  <PressableScale
+                    key={pr}
+                    onPress={() => handlePriorityChange(pr)}
+                    style={[
+                      styles.priorityCard,
+                      active && {
+                        backgroundColor: meta.background,
+                        borderColor: meta.color,
+                        borderWidth: 2,
+                      },
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Cambiar prioridad a ${meta.label}`}
+                    testID={`detail-priority-${pr}`}
                   >
                     <Ionicons
                       name={meta.icon}
-                      size={18}
-                      color={active ? colors.white : meta.color}
+                      size={16}
+                      color={meta.color}
                     />
-                  </View>
-                  <View style={styles.statusOptionTextCol}>
                     <Text
                       style={[
-                        styles.statusOptionTitle,
+                        styles.priorityCardText,
                         active && { color: meta.color, fontFamily: fonts.bold },
                       ]}
                     >
                       {meta.label}
                     </Text>
-                    <Text style={styles.statusOptionSubtitle}>{meta.description}</Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.statusOptionRadio,
-                      active && { borderColor: meta.color, backgroundColor: meta.color },
-                    ]}
-                  >
-                    {active && <Ionicons name="checkmark" size={14} color={colors.white} />}
-                  </View>
-                </PressableScale>
-              );
-            })}
-          </View>
-        </View>
-
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeaderRow}>
-            <Ionicons name="flag-outline" size={18} color={colors.primary} />
-            <Text style={typography.heading}>Nivel de Prioridad Médica</Text>
-          </View>
-          <Text style={styles.sectionCaption}>
-            Define el orden de turno en la lista de atención:
-          </Text>
-
-          <View style={styles.priorityGrid}>
-            {PRIORITIES_ASC.map((pr) => {
-              const active = request.prioridad === pr;
-              const meta = PRIORITY_META[pr];
-              return (
-                <PressableScale
-                  key={pr}
-                  onPress={() => handlePriorityChange(pr)}
-                  style={[
-                    styles.priorityCard,
-                    active && {
-                      backgroundColor: meta.background,
-                      borderColor: meta.color,
-                      borderWidth: 2,
-                    },
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Cambiar prioridad a ${meta.label}`}
-                  testID={`detail-priority-${pr}`}
-                >
-                  <Ionicons
-                    name={meta.icon}
-                    size={16}
-                    color={meta.color}
-                  />
-                  <Text
-                    style={[
-                      styles.priorityCardText,
-                      active && { color: meta.color, fontFamily: fonts.bold },
-                    ]}
-                  >
-                    {meta.label}
-                  </Text>
-                </PressableScale>
-              );
-            })}
-          </View>
-
-          <View style={styles.priorityNoticeBox}>
-            <Ionicons name="information-circle-outline" size={16} color={priority.color} />
-            <Text style={styles.priorityNoticeText}>
-              {PRIORITY_EFFECT[request.prioridad]}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeaderRow}>
-            <Ionicons name="document-text-outline" size={18} color={colors.primary} />
-            <Text style={typography.heading}>Motivo y Detalles</Text>
-          </View>
-
-          <View style={styles.serviceMetaRow}>
-            <IconTile icon={service.icon} color={service.color} background={service.background} size={32} shape="rounded" />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.serviceMetaTitle}>{service.label}</Text>
-              <Text style={styles.serviceMetaHint}>{service.hint}</Text>
+                  </PressableScale>
+                );
+              })}
             </View>
-          </View>
 
-          <Text style={styles.descriptionText}>
-            {request.descripcion || 'Sin observaciones o síntomas adicionales registrados.'}
-          </Text>
-
-          <View style={styles.divider} />
-
-          <View style={styles.infoMetaRow}>
-            <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
-            <Text style={styles.infoMetaLabel}>Fecha y hora de registro:</Text>
-            <Text style={styles.infoMetaValue}>{formatDateTime(request.fechaRegistro)}</Text>
-          </View>
-        </View>
-
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeaderRow}>
-            <Ionicons name="person-outline" size={18} color={colors.primary} />
-            <Text style={typography.heading}>Tutor Responsable</Text>
-          </View>
-
-          <View style={styles.clientInfoRow}>
-            <View style={styles.clientAvatar}>
-              <Text style={styles.clientAvatarText}>
-                {request.clienteNombre.charAt(0).toUpperCase()}
+            <View style={styles.priorityNoticeBox}>
+              <Ionicons name="information-circle-outline" size={16} color={priority.color} />
+              <Text style={styles.priorityNoticeText}>
+                {PRIORITY_EFFECT[request.prioridad]}
               </Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.clientName}>{request.clienteNombre}</Text>
-              <Text style={styles.clientPhone}>{request.telefono}</Text>
-            </View>
-            <PressableScale
-              onPress={callPhone}
-              style={styles.callButton}
-              accessibilityRole="button"
-              accessibilityLabel={`Llamar a ${request.clienteNombre}`}
-            >
-              <Ionicons name="call" size={16} color={colors.white} />
-              <Text style={styles.callButtonText}>Llamar</Text>
-            </PressableScale>
           </View>
-        </View>
+        </FadeInView>
 
-        <View style={styles.dangerZone}>
-          <PrimaryButton
-            title="Eliminar esta solicitud"
-            onPress={() => setConfirmDelete(true)}
-            variant="danger"
-            icon="trash-outline"
-            trailingIcon={null}
-            compact
-            testID="detail-delete-button"
-          />
-        </View>
+        <FadeInView delay={190} distance={14}>
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeaderRow}>
+              <Ionicons name="document-text-outline" size={18} color={colors.primary} />
+              <Text style={typography.heading}>Motivo y Detalles</Text>
+            </View>
+
+            <View style={styles.serviceMetaRow}>
+              <IconTile icon={service.icon} color={service.color} background={service.background} size={32} shape="rounded" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.serviceMetaTitle}>{service.label}</Text>
+                <Text style={styles.serviceMetaHint}>{service.hint}</Text>
+              </View>
+              <View style={styles.tariffPill}>
+                <Text style={styles.tariffPillText}>
+                  S/. {servicePrices[request.tipoServicio].toFixed(2)}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.descriptionText}>
+              {request.descripcion || 'Sin observaciones o síntomas adicionales registrados.'}
+            </Text>
+
+            <View style={styles.divider} />
+
+            <View style={styles.infoMetaRow}>
+              <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
+              <Text style={styles.infoMetaLabel}>Ingreso:</Text>
+              <Text style={styles.infoMetaValue}>{formatDateTime(request.fechaRegistro)}</Text>
+            </View>
+
+            {request.registradoPor && (
+              <View style={[styles.infoMetaRow, { marginTop: 6 }]}>
+                <Ionicons name="person-outline" size={16} color={colors.textSecondary} />
+                <Text style={styles.infoMetaLabel}>Atendido por:</Text>
+                <Text style={styles.infoMetaValue}>{request.registradoPor}</Text>
+              </View>
+            )}
+          </View>
+        </FadeInView>
+
+        <FadeInView delay={240} distance={14}>
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeaderRow}>
+              <Ionicons name="person-outline" size={18} color={colors.primary} />
+              <Text style={typography.heading}>Tutor Responsable</Text>
+            </View>
+
+            <View style={styles.clientInfoRow}>
+              <View style={styles.clientAvatar}>
+                <Text style={styles.clientAvatarText}>
+                  {request.clienteNombre.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.clientName}>{request.clienteNombre}</Text>
+                <Text style={styles.clientPhone}>{request.telefono}</Text>
+              </View>
+              <View style={styles.contactButtonsRow}>
+                <PressableScale
+                  onPress={openWhatsApp}
+                  style={styles.whatsappButton}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Enviar WhatsApp a ${request.clienteNombre}`}
+                  testID="detail-whatsapp-button"
+                >
+                  <Ionicons name="logo-whatsapp" size={16} color={colors.white} />
+                  <Text style={styles.callButtonText}>WhatsApp</Text>
+                </PressableScale>
+                <PressableScale
+                  onPress={callPhone}
+                  style={styles.callButton}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Llamar a ${request.clienteNombre}`}
+                  testID="detail-call-button"
+                >
+                  <Ionicons name="call" size={15} color={colors.white} />
+                  <Text style={styles.callButtonText}>Llamar</Text>
+                </PressableScale>
+              </View>
+            </View>
+          </View>
+        </FadeInView>
+
+        <FadeInView delay={280} distance={14}>
+          <View style={styles.dangerZone}>
+            <PrimaryButton
+              title="Eliminar esta solicitud"
+              onPress={() => setConfirmDelete(true)}
+              variant="danger"
+              icon="trash-outline"
+              trailingIcon={null}
+              compact
+              testID="detail-delete-button"
+            />
+          </View>
+        </FadeInView>
 
         <View style={{ height: 80 }} />
       </ScrollView>
@@ -609,6 +653,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
   },
+  tariffPill: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  tariffPillText: {
+    fontFamily: fonts.bold,
+    fontSize: 12.5,
+    color: colors.primaryDark,
+  },
   descriptionText: {
     fontFamily: fonts.regular,
     fontSize: 14,
@@ -668,19 +725,34 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 2,
   },
-  callButton: {
+  contactButtonsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
+  },
+  whatsappButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: colors.done,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 10,
-    minHeight: 44,
+    minHeight: 42,
+    borderRadius: radius.pill,
+  },
+  callButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 10,
+    minHeight: 42,
     borderRadius: radius.pill,
   },
   callButtonText: {
     fontFamily: fonts.semibold,
-    fontSize: 13,
+    fontSize: 12.5,
     color: colors.white,
   },
 

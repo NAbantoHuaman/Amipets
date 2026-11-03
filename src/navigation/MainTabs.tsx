@@ -28,15 +28,15 @@ export function MainTabs() {
   const urgentCount = activeUrgent(requests).length;
 
   const bottomInset = Math.max(insets.bottom, Platform.OS === 'android' ? 10 : 12);
-  const barHeight = 62 + bottomInset;
+  const barHeight = 64 + bottomInset;
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarHideOnKeyboard: true,
-        tabBarActiveTintColor: colors.primaryDark,
-        tabBarInactiveTintColor: colors.textMuted,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.tabBarInactive,
         tabBarShowLabel: true,
         tabBarLabel: ICONS[route.name].label,
         tabBarLabelStyle: styles.label,
@@ -51,7 +51,7 @@ export function MainTabs() {
         tabBarIcon: ({ focused, color }) => (
           <Ionicons
             name={focused ? ICONS[route.name].active : ICONS[route.name].inactive}
-            size={22}
+            size={24}
             color={color}
           />
         ),
@@ -77,10 +77,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingTop: 8,
+    paddingTop: 6,
     ...Platform.select({
-      android: { elevation: 8 },
-      default: { shadowColor: '#8C5E37', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: -4 } },
+      android: { elevation: 4 },
+      default: { shadowColor: '#0F172A', shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: -2 } },
     }),
   },
   tabItem: {
@@ -89,14 +89,14 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fonts.medium,
-    fontSize: 11.5,
-    lineHeight: 14,
-    marginTop: 3,
-    paddingBottom: 2,
+    fontSize: 12.5,
+    lineHeight: 15,
+    marginTop: 2,
+    letterSpacing: -0.1,
   },
   badge: {
     backgroundColor: colors.danger,
-    fontFamily: fonts.semibold,
+    fontFamily: fonts.bold,
     fontSize: 10,
     minWidth: 18,
     height: 18,

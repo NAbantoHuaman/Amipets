@@ -9,6 +9,7 @@ export { IconTile } from './IconTile';
 export { PetAvatar } from './PetAvatar';
 export { PressableScale } from './PressableScale';
 export { PrimaryButton } from './PrimaryButton';
+export { PulseView } from './PulseView';
 export { Chip, PriorityChip, ServiceChip, StatusChip } from './Chips';
 export { RequestCard } from './RequestCard';
 export { ScreenHeader } from './ScreenHeader';

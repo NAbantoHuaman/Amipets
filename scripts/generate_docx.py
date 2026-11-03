@@ -218,21 +218,19 @@ def create_report():
     r_h2.font.color.rgb = RGBColor(139, 94, 60)
 
     doc.add_paragraph(
-        "La aplicación fue desarrollada siguiendo una arquitectura modular en capas con alta cohesión y bajo acoplamiento:"
+        "La aplicación fue desarrollada siguiendo los principios de Clean Architecture estructurada en 4 capas concéntricas con alta cohesión y bajo acoplamiento:"
     )
 
-    # Tabla de Arquitectura estructurada para Word
-    table_arch = doc.add_table(rows=5, cols=2)
+    table_arch = doc.add_table(rows=4, cols=2)
     table_arch.alignment = WD_TABLE_ALIGNMENT.CENTER
     set_table_borders(table_arch, color="CBD5E1", sz="6")
     arch_widths = [Inches(2.2), Inches(4.3)]
 
     arch_layers = [
-        ("Capa de Navegación", "RootNavigator y MainTabs (Navegación por pestañas inferiores persistentes: Inicio, Solicitudes, Calendario, Configuración y stack modal para Crear/Editar y Ficha de Detalle)."),
-        ("Capa de Presentación (Screens)", "WelcomeScreen (Login), HomeScreen (Dashboard), RequestsScreen (Directorio y Filtros), CalendarScreen (Agenda), CreateRequestScreen (Formulario) y RequestDetailScreen (Ficha Clínica)."),
-        ("Componentes UI Reutilizables", "RequestCard, FormField, StatusChip, PriorityChip, ConfirmDialog, SearchBar, FilterTabs, EmptyState, PressableScale y Tokens de diseño."),
-        ("Gestión de Estado Global", "RequestsProvider (useReducer puro con inmutabilidad estricta), RequestsContext, ToastContext (alertas no bloqueantes) y AuthContext (sesión médica)."),
-        ("Capa de Dominio y Modelado", "VeterinaryRequest (id, cliente, teléfono, mascota, especie, servicio, prioridad, estado, fecha ISO), validadores y formateadores de fecha relativa.")
+        ("1. Capa de Dominio (domain/)", "Entidades de negocio y tipos centrales (VeterinaryRequest, User, Session, UserRole) e interfaces abstractas de repositorios (IRequestRepository, IAuthRepository). Libre de dependencias externas."),
+        ("2. Capa de Aplicación (application/)", "Casos de uso y servicios de lógica asistencial: requestService (ordenamiento por urgencia, filtrado, conteos por estado/servicio) y authService (validaciones de registro, asignación de cargos y roles clínicos)."),
+        ("3. Capa de Infraestructura (infrastructure/)", "Implementaciones concretas de persistencia: InMemoryRequestRepository (gestión reactiva de solicitudes) e InMemoryAuthRepository (almacenamiento de personal registrado y administrador médico Dr. Carlos Mendoza)."),
+        ("4. Capa de Presentación (presentation/)", "Interfaces móviles y experiencia de usuario: Screens (incluyendo WelcomeScreen y la nueva RegisterScreen), componentes atómicos reutilizables (Cards, Chips, Modales), navegación tipada (RootNavigator, MainTabs) y estado global mediante Context API.")
     ]
 
     for idx, (capa, desc) in enumerate(arch_layers):
@@ -262,20 +260,20 @@ def create_report():
 
     doc.add_paragraph().paragraph_format.space_after = Pt(8)
 
-    # Detalle de pantallas
     h2_4 = doc.add_heading(level=2)
     h2_4.paragraph_format.space_before = Pt(8)
     h2_4.paragraph_format.space_after = Pt(4)
-    h2_4.add_run("2.4 Catálogo de Pantallas de la Aplicación (src/screens/)").font.size = Pt(13)
+    h2_4.add_run("2.4 Catálogo de Pantallas de la Aplicación (presentation/screens/)").font.size = Pt(13)
 
     screens_list = [
-        ("WelcomeScreen: ", "Pantalla de bienvenida con autenticación veterinaria (admin/admin), logo oficial de Amipets y validación en tiempo real."),
-        ("HomeScreen: ", "Dashboard asistencial con saludo médico al Dr. Carlos Mendoza, semáforo de urgencias activas, contadores en vivo, accesos rápidos a servicios clínicos y solicitudes prioritarias."),
+        ("WelcomeScreen: ", "Pantalla de bienvenida y acceso con credenciales administrativas fijas (admin/admin) y acceso directo a registro de nuevo personal."),
+        ("RegisterScreen: ", "Pantalla de registro para nuevos colaboradores y recepcionistas con selección interactiva de roles (Recepcionista, Asistente, Veterinario), asignación de colegiatura y credenciales personalizadas."),
+        ("HomeScreen: ", "Dashboard asistencial con saludo médico personalizado según el usuario en sesión, semáforo de urgencias activas, contadores en vivo, accesos rápidos a servicios y notificaciones."),
         ("RequestsScreen: ", "Directorio integral de solicitudes con buscador reactivo por mascota, tutor o teléfono, selector de pestañas de estado y chips de filtro por nivel de prioridad."),
         ("CalendarScreen: ", "Agenda clínica y calendario médico interactivo para la visualización cronológica de atenciones, selector de fechas y sincronización reactiva con las solicitudes de la clínica."),
         ("CreateRequestScreen: ", "Formulario asistido para el registro y edición de pacientes con selector visual de especie, nivel de urgencia y validaciones en línea debajo de cada campo."),
         ("RequestDetailScreen: ", "Ficha clínica del paciente con controles de un solo toque para transición de estados, ajuste de prioridad médica, botón de llamada telefónica directa y confirmación de eliminación."),
-        ("SettingsScreen: ", "Perfil profesional de la clínica, gestión de sedes, tarifario médico interactivo y utilidades del sistema.")
+        ("SettingsScreen: ", "Perfil profesional de la clínica, información de usuario en sesión, gestión de sedes, tarifario médico interactivo y utilidades del sistema.")
     ]
     for sc_title, sc_desc in screens_list:
         bp = doc.add_paragraph(style='List Bullet')

@@ -7,6 +7,7 @@ import { NavigationAction, usePreventRemove } from '@react-navigation/native';
 import {
   ConfirmDialog,
   EmptyState,
+  FadeInView,
   FormField,
   IconTile,
   PetAvatar,
@@ -14,6 +15,7 @@ import {
   PrimaryButton,
   ScreenHeader,
 } from '../components';
+import { fullName, useAuth } from '../context/AuthContext';
 import { useRequests } from '../context/RequestsContext';
 import { useToast } from '../context/ToastContext';
 import { PRIORITIES, Priority, RequestInput, SERVICE_TYPES, ServiceType, SPECIES, Species } from '../models/request';
@@ -47,12 +49,14 @@ const EMPTY_FORM: FormState = {
 };
 
 export function CreateRequestScreen({ navigation, route }: Props) {
-  const { getRequestById, createRequest, updateRequest } = useRequests();
+  const { session } = useAuth();
+  const { getRequestById, createRequest, updateRequest, servicePrices } = useRequests();
   const { showToast } = useToast();
 
   const editingId = route.params?.requestId;
   const existing = editingId ? getRequestById(editingId) : undefined;
   const isEdit = Boolean(editingId);
+  const initialDateParam = route.params?.initialDate;
 
   const initialForm = useMemo<FormState>(() => {
     if (existing) {
@@ -75,7 +79,17 @@ export function CreateRequestScreen({ navigation, route }: Props) {
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [now, setNow] = useState(() => new Date());
+  const [now, setNow] = useState(() => {
+    if (initialDateParam) {
+      const parsed = new Date(initialDateParam);
+      if (!isNaN(parsed.getTime())) {
+        const current = new Date();
+        parsed.setHours(current.getHours(), current.getMinutes(), current.getSeconds());
+        return parsed;
+      }
+    }
+    return new Date();
+  });
   const [pendingAction, setPendingAction] = useState<NavigationAction | null>(null);
 
   const savedRef = useRef(false);
@@ -84,10 +98,10 @@ export function CreateRequestScreen({ navigation, route }: Props) {
   const descRef = useRef<any>(null);
 
   useEffect(() => {
-    if (isEdit) return;
+    if (isEdit || initialDateParam) return;
     const timer = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(timer);
-  }, [isEdit]);
+  }, [isEdit, initialDateParam]);
 
   useEffect(() => {
     if (submitted) setErrors(validateRequest(form));
@@ -111,6 +125,7 @@ export function CreateRequestScreen({ navigation, route }: Props) {
       return;
     }
 
+    const registeredByLabel = fullName(session) || 'Dr. Carlos Mendoza';
     const input: RequestInput = {
       clienteNombre: form.clienteNombre,
       telefono: form.telefono,
@@ -119,6 +134,13 @@ export function CreateRequestScreen({ navigation, route }: Props) {
       tipoServicio: form.tipoServicio as ServiceType,
       prioridad: form.prioridad,
       descripcion: form.descripcion,
+      ...(!isEdit
+        ? {
+            registradoPor: registeredByLabel,
+            registradoPorUsuario: session?.userName ?? 'admin',
+          }
+        : {}),
+      ...(initialDateParam && !isEdit ? { fechaRegistro: now.toISOString() } : {}),
     };
 
     setSaving(true);
@@ -160,277 +182,308 @@ export function CreateRequestScreen({ navigation, route }: Props) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-          <View style={styles.card}>
-            <CardTitle icon="person-outline" title="Datos del cliente" />
-            <FormField
-              testID="form-client"
-              label="Nombre del cliente"
-              required
-              icon="person-circle-outline"
-              placeholder="ej. Lucía Fernández"
-              value={form.clienteNombre}
-              onChangeText={(t) => update('clienteNombre', t)}
-              maxLength={LIMITS.nameMax}
-              autoCapitalize="words"
-              returnKeyType="next"
-              onSubmitEditing={() => phoneRef.current?.focus()}
-              error={errors.clienteNombre}
-            />
-            <FormField
-              ref={phoneRef}
-              testID="form-phone"
-              label="Teléfono"
-              required
-              icon="call-outline"
-              placeholder="ej. 987 654 321"
-              value={form.telefono}
-              onChangeText={(t) => update('telefono', t.replace(/[^\d\s+()-]/g, ''))}
-              keyboardType="phone-pad"
-              maxLength={18}
-              returnKeyType="next"
-              onSubmitEditing={() => petRef.current?.focus()}
-              error={errors.telefono}
-              hint="Celular de 9 dígitos o número fijo."
-            />
-          </View>
-
-          <View style={styles.card}>
-            <CardTitle icon="paw-outline" title="Mascota" />
-            <Text style={styles.fieldLabel}>Especie</Text>
-            <View style={styles.speciesRow} accessibilityRole="radiogroup">
-              {SPECIES.map((s) => {
-                const selected = form.especie === s;
-                return (
-                  <Pressable
-                    key={s}
-                    onPress={() => update('especie', s)}
-                    style={styles.speciesItem}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected }}
-                    accessibilityLabel={SPECIES_META[s].label}
-                    testID={`form-species-${s}`}
-                  >
-                    <View style={[styles.speciesRing, selected && styles.speciesRingActive]}>
-                      <PetAvatar species={s} size={54} shape="circle" />
-                    </View>
-                    <Text style={[styles.speciesLabel, selected && styles.speciesLabelActive]}>{SPECIES_META[s].label}</Text>
-                  </Pressable>
-                );
-              })}
+          <FadeInView delay={30} distance={10}>
+            <View style={styles.card}>
+              <CardTitle icon="person-outline" title="Datos del cliente" />
+              <FormField
+                testID="form-client"
+                label="Nombre del cliente"
+                required
+                icon="person-circle-outline"
+                placeholder="ej. Lucía Fernández"
+                value={form.clienteNombre}
+                onChangeText={(t) => update('clienteNombre', t)}
+                maxLength={LIMITS.nameMax}
+                autoCapitalize="words"
+                returnKeyType="next"
+                onSubmitEditing={() => phoneRef.current?.focus()}
+                error={errors.clienteNombre}
+              />
+              <FormField
+                ref={phoneRef}
+                testID="form-phone"
+                label="Teléfono"
+                required
+                icon="call-outline"
+                placeholder="ej. 987 654 321"
+                value={form.telefono}
+                onChangeText={(t) => update('telefono', t.replace(/[^\d\s+()-]/g, ''))}
+                keyboardType="phone-pad"
+                maxLength={18}
+                returnKeyType="next"
+                onSubmitEditing={() => petRef.current?.focus()}
+                error={errors.telefono}
+                hint="Celular de 9 dígitos o número fijo."
+              />
             </View>
-            <FormField
-              ref={petRef}
-              testID="form-pet"
-              label="Nombre de la mascota"
-              required
-              icon="heart-outline"
-              placeholder="ej. Toby"
-              value={form.mascotaNombre}
-              onChangeText={(t) => update('mascotaNombre', t)}
-              maxLength={LIMITS.petMax}
-              autoCapitalize="words"
-              returnKeyType="next"
-              onSubmitEditing={() => descRef.current?.focus()}
-              error={errors.mascotaNombre}
-            />
-          </View>
+          </FadeInView>
 
-          <View style={styles.card}>
-            <View style={styles.sectionHeaderBetween}>
-              <CardTitle icon="medkit-outline" title="Tipo de servicio solicitado" required />
-              <Text style={styles.headerHintTag}>Atención Inmediata</Text>
-            </View>
-
-            <View style={styles.serviceGrid} accessibilityRole="radiogroup">
-              {SERVICE_TYPES.map((s) => {
-                const meta = SERVICE_META[s];
-                const selected = form.tipoServicio === s;
-                const isEmergency = s === 'EMERGENCIA';
-
-                return (
-                  <PressableScale
-                    key={s}
-                    onPress={() => {
-                      update('tipoServicio', s);
-                      if (isEmergency && (form.prioridad === 'BAJA' || form.prioridad === 'MEDIA')) {
-                        update('prioridad', 'URGENTE');
-                      }
-                    }}
-                    style={[
-                      styles.serviceSquareCard,
-                      selected && isEmergency && styles.serviceEmergencySelected,
-                      selected && !isEmergency && { borderColor: meta.color, backgroundColor: meta.background },
-                      !!errors.tipoServicio && styles.tileError,
-                    ]}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected }}
-                    accessibilityLabel={`${meta.label}. ${meta.hint}`}
-                    testID={`form-service-${s}`}
-                  >
-                    <View style={styles.serviceCardTopRow}>
-                      <View
-                        style={[
-                          styles.serviceIconContainer,
-                          selected && isEmergency
-                            ? { backgroundColor: 'rgba(255,255,255,0.2)' }
-                            : { backgroundColor: meta.background },
-                        ]}
-                      >
-                        <Ionicons
-                          name={meta.icon}
-                          size={20}
-                          color={selected && isEmergency ? colors.white : meta.color}
+          <FadeInView delay={70} distance={10}>
+            <View style={styles.card}>
+              <CardTitle icon="paw-outline" title="Mascota" />
+              <Text style={styles.fieldLabel}>Especie</Text>
+              <View style={styles.speciesRow} accessibilityRole="radiogroup">
+                {SPECIES.map((s) => {
+                  const selected = form.especie === s;
+                  return (
+                    <PressableScale
+                      key={s}
+                      onPress={() => update('especie', s)}
+                      style={styles.speciesItem}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                      accessibilityLabel={SPECIES_META[s].label}
+                      testID={`form-species-${s}`}
+                    >
+                      <View style={[styles.speciesRing, selected ? styles.speciesRingActive : styles.speciesRingInactive]}>
+                        <PetAvatar
+                          species={s}
+                          size={52}
+                          shape="circle"
+                          background={selected ? colors.primarySoft : colors.surfaceMuted}
+                          color={selected ? colors.primaryDark : colors.textSecondary}
                         />
+                        {selected && (
+                          <View style={styles.speciesCheckBadge}>
+                            <Ionicons name="checkmark" size={10} color={colors.white} />
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[styles.speciesLabel, selected && styles.speciesLabelActive]}>{SPECIES_META[s].label}</Text>
+                    </PressableScale>
+                  );
+                })}
+              </View>
+              <FormField
+                ref={petRef}
+                testID="form-pet"
+                label="Nombre de la mascota"
+                required
+                icon="heart-outline"
+                placeholder="ej. Toby"
+                value={form.mascotaNombre}
+                onChangeText={(t) => update('mascotaNombre', t)}
+                maxLength={LIMITS.petMax}
+                autoCapitalize="words"
+                returnKeyType="next"
+                onSubmitEditing={() => descRef.current?.focus()}
+                error={errors.mascotaNombre}
+              />
+            </View>
+          </FadeInView>
+
+          <FadeInView delay={110} distance={10}>
+            <View style={styles.card}>
+              <View style={styles.sectionHeaderBetween}>
+                <CardTitle icon="medkit-outline" title="Tipo de servicio solicitado" required />
+                <Text style={styles.headerHintTag}>Atención Inmediata</Text>
+              </View>
+
+              <View style={styles.serviceGrid} accessibilityRole="radiogroup">
+                {SERVICE_TYPES.map((s) => {
+                  const meta = SERVICE_META[s];
+                  const selected = form.tipoServicio === s;
+                  const isEmergency = s === 'EMERGENCIA';
+
+                  return (
+                    <PressableScale
+                      key={s}
+                      onPress={() => {
+                        update('tipoServicio', s);
+                        if (isEmergency && (form.prioridad === 'BAJA' || form.prioridad === 'MEDIA')) {
+                          update('prioridad', 'URGENTE');
+                        }
+                      }}
+                      style={[
+                        styles.serviceSquareCard,
+                        selected && isEmergency && styles.serviceEmergencySelected,
+                        selected && !isEmergency && { borderColor: meta.color, backgroundColor: meta.background },
+                        !!errors.tipoServicio && styles.tileError,
+                      ]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                      accessibilityLabel={`${meta.label}. ${meta.hint}`}
+                      testID={`form-service-${s}`}
+                    >
+                      <View style={styles.serviceCardTopRow}>
+                        <View
+                          style={[
+                            styles.serviceIconContainer,
+                            selected && isEmergency
+                              ? { backgroundColor: 'rgba(255,255,255,0.2)' }
+                              : { backgroundColor: meta.background },
+                          ]}
+                        >
+                          <Ionicons
+                            name={meta.icon}
+                            size={20}
+                            color={selected && isEmergency ? colors.white : meta.color}
+                          />
+                        </View>
+
+                        {isEmergency ? (
+                          <View style={[styles.uciBadge, selected && styles.uciBadgeSelected]}>
+                            <Text style={[styles.uciBadgeText, selected && styles.uciBadgeTextSelected]}>
+                              Prioridad UCI
+                            </Text>
+                          </View>
+                        ) : selected ? (
+                          <View style={[styles.checkCircle, { backgroundColor: meta.color }]}>
+                            <Ionicons name="checkmark" size={11} color={colors.white} />
+                          </View>
+                        ) : null}
                       </View>
 
-                      {isEmergency ? (
-                        <View style={[styles.uciBadge, selected && styles.uciBadgeSelected]}>
-                          <Text style={[styles.uciBadgeText, selected && styles.uciBadgeTextSelected]}>
-                            Prioridad UCI
-                          </Text>
-                        </View>
-                      ) : selected ? (
-                        <View style={[styles.checkCircle, { backgroundColor: meta.color }]}>
-                          <Ionicons name="checkmark" size={11} color={colors.white} />
-                        </View>
-                      ) : null}
-                    </View>
+                      <View style={styles.serviceCardBottom}>
+                        <Text
+                          style={[
+                            styles.serviceCardTitle,
+                            selected && isEmergency
+                              ? { color: colors.white }
+                              : selected
+                              ? { color: meta.color }
+                              : undefined,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {meta.label}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.serviceCardHint,
+                            selected && isEmergency ? { color: 'rgba(255,255,255,0.85)' } : undefined,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {meta.hint} · S/. {servicePrices[s].toFixed(2)}
+                        </Text>
+                      </View>
+                    </PressableScale>
+                  );
+                })}
+              </View>
+              {errors.tipoServicio && <InlineError text={errors.tipoServicio} />}
+            </View>
+          </FadeInView>
 
-                    <View style={styles.serviceCardBottom}>
+          <FadeInView delay={150} distance={10}>
+            <View style={styles.card}>
+              <View style={styles.sectionHeaderBetween}>
+                <CardTitle icon="pulse-outline" title="Prioridad Triage" />
+                <Text
+                  style={[
+                    styles.priorityStatusTag,
+                    { color: PRIORITY_META[form.prioridad].color },
+                  ]}
+                >
+                  {PRIORITY_META[form.prioridad].label}
+                </Text>
+              </View>
+
+              <View style={styles.triageSegmentBar} accessibilityRole="radiogroup">
+                {PRIORITIES_ASC.map((p) => {
+                  const meta = PRIORITY_META[p];
+                  const selected = form.prioridad === p;
+                  return (
+                    <Pressable
+                      key={p}
+                      onPress={() => update('prioridad', p)}
+                      style={[
+                        styles.triageSegmentItem,
+                        selected && [styles.triageSegmentItemActive, { backgroundColor: meta.background, borderColor: meta.color }],
+                      ]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                      accessibilityLabel={`Prioridad ${meta.label}`}
+                      testID={`form-priority-${p}`}
+                    >
+                      <View
+                        style={[
+                          styles.priorityDot,
+                          { backgroundColor: selected ? meta.color : colors.textMuted },
+                        ]}
+                      />
                       <Text
                         style={[
-                          styles.serviceCardTitle,
-                          selected && isEmergency
-                            ? { color: colors.white }
-                            : selected
-                            ? { color: meta.color }
-                            : undefined,
+                          styles.triageSegmentLabel,
+                          selected && { color: meta.color, fontFamily: fonts.bold },
                         ]}
                         numberOfLines={1}
                       >
                         {meta.label}
                       </Text>
-                      <Text
-                        style={[
-                          styles.serviceCardHint,
-                          selected && isEmergency ? { color: 'rgba(255,255,255,0.85)' } : undefined,
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {meta.hint}
-                      </Text>
-                    </View>
-                  </PressableScale>
-                );
-              })}
-            </View>
-            {errors.tipoServicio && <InlineError text={errors.tipoServicio} />}
-          </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
 
-          <View style={styles.card}>
-            <View style={styles.sectionHeaderBetween}>
-              <CardTitle icon="pulse-outline" title="Prioridad Triage" />
-              <Text
+              <View
                 style={[
-                  styles.priorityStatusTag,
-                  { color: PRIORITY_META[form.prioridad].color },
+                  styles.triageNoticeCard,
+                  { backgroundColor: PRIORITY_META[form.prioridad].background, borderColor: PRIORITY_META[form.prioridad].color },
                 ]}
               >
-                {PRIORITY_META[form.prioridad].label}
-              </Text>
-            </View>
-
-            <View style={styles.triageSegmentBar} accessibilityRole="radiogroup">
-              {PRIORITIES_ASC.map((p) => {
-                const meta = PRIORITY_META[p];
-                const selected = form.prioridad === p;
-                return (
-                  <Pressable
-                    key={p}
-                    onPress={() => update('prioridad', p)}
-                    style={[
-                      styles.triageSegmentItem,
-                      selected && [styles.triageSegmentItemActive, { backgroundColor: meta.background, borderColor: meta.color }],
-                    ]}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected }}
-                    accessibilityLabel={`Prioridad ${meta.label}`}
-                    testID={`form-priority-${p}`}
-                  >
-                    <View
-                      style={[
-                        styles.priorityDot,
-                        { backgroundColor: selected ? meta.color : colors.textMuted },
-                      ]}
-                    />
-                    <Text
-                      style={[
-                        styles.triageSegmentLabel,
-                        selected && { color: meta.color, fontFamily: fonts.bold },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {meta.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <View
-              style={[
-                styles.triageNoticeCard,
-                { backgroundColor: PRIORITY_META[form.prioridad].background, borderColor: PRIORITY_META[form.prioridad].color },
-              ]}
-            >
-              <Ionicons
-                name={PRIORITY_META[form.prioridad].icon}
-                size={16}
-                color={PRIORITY_META[form.prioridad].color}
-              />
-              <Text style={[styles.triageNoticeText, { color: PRIORITY_META[form.prioridad].color }]}>
-                {PRIORITY_EFFECT[form.prioridad]}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.card}>
-            <CardTitle icon="document-text-outline" title="Motivo de atención" />
-            <FormField
-              ref={descRef}
-              testID="form-description"
-              label="Descripción"
-              placeholder="Describe síntomas, antecedentes o indicaciones del cliente."
-              value={form.descripcion}
-              onChangeText={(t) => update('descripcion', t)}
-              multiline
-              maxLength={LIMITS.descriptionMax}
-              showCounter
-              error={errors.descripcion}
-            />
-
-            <View style={styles.registry}>
-              <IconTile icon="calendar-outline" color={colors.primary} background={colors.surface} size={40} />
-              <View style={{ flex: 1 }}>
-                <Text style={typography.captionStrong}>Fecha y hora de registro</Text>
-                <Text style={styles.registryValue}>{formatDateTime(existing?.fechaRegistro ?? now.toISOString())}</Text>
-                <Text style={typography.caption}>
-                  {isEdit ? 'No se modifica al editar.' : 'Se asigna automáticamente al guardar.'}
+                <Ionicons
+                  name={PRIORITY_META[form.prioridad].icon}
+                  size={16}
+                  color={PRIORITY_META[form.prioridad].color}
+                />
+                <Text style={[styles.triageNoticeText, { color: PRIORITY_META[form.prioridad].color }]}>
+                  {PRIORITY_EFFECT[form.prioridad]}
                 </Text>
               </View>
             </View>
-          </View>
+          </FadeInView>
 
-          <PrimaryButton
-            title={isEdit ? 'Guardar cambios' : 'Guardar solicitud'}
-            onPress={handleSave}
-            loading={saving}
-            testID="form-submit"
-            style={{ marginTop: spacing.xs }}
-          />
-          <Text style={styles.requiredNote}>
-            <Text style={{ color: colors.danger }}>*</Text> Campos obligatorios
-          </Text>
+          <FadeInView delay={190} distance={10}>
+            <View style={styles.card}>
+              <CardTitle icon="document-text-outline" title="Motivo de atención" />
+              <FormField
+                ref={descRef}
+                testID="form-description"
+                label="Descripción"
+                placeholder="Describe síntomas, antecedentes o indicaciones del cliente."
+                value={form.descripcion}
+                onChangeText={(t) => update('descripcion', t)}
+                multiline
+                maxLength={LIMITS.descriptionMax}
+                showCounter
+                error={errors.descripcion}
+              />
+
+              <View style={styles.registry}>
+                <IconTile icon="calendar-outline" color={colors.primary} background={colors.surface} size={40} />
+                <View style={{ flex: 1 }}>
+                  <Text style={typography.captionStrong}>Fecha y hora de ingreso</Text>
+                  <Text style={styles.registryValue}>{formatDateTime(existing?.fechaRegistro ?? now.toISOString())}</Text>
+                  <Text style={typography.caption}>
+                    {existing?.registradoPor ?? fullName(session) ?? 'Dr. Carlos Mendoza'}
+                  </Text>
+                </View>
+                {form.tipoServicio && (
+                  <View style={styles.tariffBadge}>
+                    <Text style={styles.tariffBadgeLabel}>Tarifa</Text>
+                    <Text style={styles.tariffBadgeValue}>
+                      S/. {servicePrices[form.tipoServicio].toFixed(2)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </FadeInView>
+
+          <FadeInView delay={230} distance={10}>
+            <PrimaryButton
+              title={isEdit ? 'Guardar cambios' : 'Guardar solicitud'}
+              onPress={handleSave}
+              loading={saving}
+              testID="form-submit"
+              style={{ marginTop: spacing.xs }}
+            />
+            <Text style={styles.requiredNote}>
+              <Text style={{ color: colors.danger }}>*</Text> Campos obligatorios
+            </Text>
+          </FadeInView>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -483,10 +536,30 @@ const styles = StyleSheet.create({
 
   speciesRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md },
   speciesItem: { alignItems: 'center', gap: 4, flex: 1 },
-  speciesRing: { padding: 3, borderRadius: 40, borderWidth: 2, borderColor: 'transparent' },
+  speciesRing: {
+    padding: 3,
+    borderRadius: 40,
+    position: 'relative',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
   speciesRingActive: { borderColor: colors.primary },
+  speciesRingInactive: { borderColor: colors.border },
+  speciesCheckBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.surface,
+  },
   speciesLabel: { fontFamily: fonts.medium, fontSize: 12, color: colors.textMuted },
-  speciesLabelActive: { color: colors.primary, fontFamily: fonts.semibold },
+  speciesLabelActive: { color: colors.primaryDark, fontFamily: fonts.bold },
 
   sectionHeaderBetween: {
     flexDirection: 'row',
@@ -642,6 +715,25 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   registryValue: { fontFamily: fonts.semibold, fontSize: 14, color: colors.text },
+  tariffBadge: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'flex-end',
+  },
+  tariffBadgeLabel: {
+    fontFamily: fonts.regular,
+    fontSize: 10,
+    color: colors.textMuted,
+  },
+  tariffBadgeValue: {
+    fontFamily: fonts.bold,
+    fontSize: 13,
+    color: colors.primaryDark,
+  },
 
   inlineError: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: spacing.sm },
   inlineErrorText: { fontFamily: fonts.medium, fontSize: 12, color: colors.danger },

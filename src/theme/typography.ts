@@ -10,15 +10,15 @@ export const fonts = {
 } as const;
 
 export const typography = {
-  display: { fontFamily: fonts.semibold, fontSize: 26, lineHeight: 34, color: colors.text },
-  title: { fontFamily: fonts.semibold, fontSize: 21, lineHeight: 28, color: colors.text },
-  heading: { fontFamily: fonts.semibold, fontSize: 16, lineHeight: 22, color: colors.text },
-  subheading: { fontFamily: fonts.medium, fontSize: 14, lineHeight: 20, color: colors.text },
-  body: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 21, color: colors.textSecondary },
-  bodyStrong: { fontFamily: fonts.medium, fontSize: 14, lineHeight: 21, color: colors.text },
-  caption: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 17, color: colors.textMuted },
-  captionStrong: { fontFamily: fonts.medium, fontSize: 12, lineHeight: 17, color: colors.textSecondary },
-  label: { fontFamily: fonts.medium, fontSize: 13, lineHeight: 18, color: colors.text },
-  tiny: { fontFamily: fonts.medium, fontSize: 11, lineHeight: 14, color: colors.textMuted },
-  script: { fontFamily: fonts.script, fontSize: 20, lineHeight: 22, color: colors.textSecondary },
+  display: { fontFamily: fonts.bold, fontSize: 24, lineHeight: 30, letterSpacing: -0.5, color: colors.text },
+  title: { fontFamily: fonts.bold, fontSize: 20, lineHeight: 26, letterSpacing: -0.4, color: colors.text },
+  heading: { fontFamily: fonts.semibold, fontSize: 16, lineHeight: 22, letterSpacing: -0.25, color: colors.text },
+  subheading: { fontFamily: fonts.medium, fontSize: 14, lineHeight: 20, letterSpacing: -0.1, color: colors.text },
+  body: { fontFamily: fonts.regular, fontSize: 13.5, lineHeight: 20, color: colors.textSecondary },
+  bodyStrong: { fontFamily: fonts.semibold, fontSize: 13.5, lineHeight: 20, color: colors.text },
+  caption: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 16, color: colors.textMuted },
+  captionStrong: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16, color: colors.textSecondary },
+  label: { fontFamily: fonts.medium, fontSize: 13, lineHeight: 18, letterSpacing: -0.1, color: colors.text },
+  tiny: { fontFamily: fonts.semibold, fontSize: 11, lineHeight: 14, letterSpacing: 0.2, color: colors.textMuted },
+  script: { fontFamily: fonts.script, fontSize: 21, lineHeight: 23, color: colors.primaryDark },
 } satisfies Record<string, TextStyle>;
