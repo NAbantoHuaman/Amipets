@@ -14,7 +14,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { FadeInView, FormField, PressableScale, PrimaryButton } from '../components';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { validateRegistrationInput } from '../application/services/authService';
+import { validateRegistrationInput } from '../../application/services/authService';
 import { RootStackParamList } from '../navigation/types';
 import { colors, common, fonts, radius, spacing, typography } from '../theme';
 

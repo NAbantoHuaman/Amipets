@@ -18,7 +18,7 @@ import {
 import { fullName, useAuth } from '../context/AuthContext';
 import { useRequests } from '../context/RequestsContext';
 import { useToast } from '../context/ToastContext';
-import { PRIORITIES, Priority, RequestInput, SERVICE_TYPES, ServiceType, SPECIES, Species } from '../models/request';
+import { PRIORITIES, Priority, RequestInput, SERVICE_TYPES, ServiceType, SPECIES, Species } from '../../domain/models/request';
 import { RootStackParamList } from '../navigation/types';
 import { colors, common, fonts, radius, shadows, spacing, typography } from '../theme';
 import { formatDateTime } from '../utils/date';

@@ -6,8 +6,8 @@ import {
   ServicePrices,
   ServiceType,
   VeterinaryRequest,
-} from '../models/request';
-import { requestRepository } from '../infrastructure/repositories/InMemoryRequestRepository';
+} from '../../domain/models/request';
+import { requestRepository } from '../../infrastructure/repositories/InMemoryRequestRepository';
 import { actions } from '../store/actions';
 import { initialState } from '../store/initialState';
 import { requestsReducer } from '../store/requestsReducer';

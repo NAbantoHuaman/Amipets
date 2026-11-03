@@ -8,7 +8,7 @@ import {
   VeterinaryRequest,
 } from '../../domain/models/request';
 import { IRequestRepository } from '../../domain/repositories/IRequestRepository';
-import { generateId } from '../../utils/id';
+import { generateId } from '../../presentation/utils/id';
 
 const STORAGE_REQUESTS_KEY = 'amipets_requests_v1';
 const STORAGE_PRICES_KEY = 'amipets_service_prices_v1';

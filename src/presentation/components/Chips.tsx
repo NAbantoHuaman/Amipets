@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Priority, RequestStatus, ServiceType } from '../models/request';
+import { Priority, RequestStatus, ServiceType } from '../../domain/models/request';
 import { colors, fonts, radius, spacing } from '../theme';
 import { IconName, PRIORITY_META, SERVICE_META, STATUS_META } from '../utils/requestMeta';
 

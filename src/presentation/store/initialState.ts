@@ -1,4 +1,4 @@
-import { VeterinaryRequest } from '../models/request';
+import { VeterinaryRequest } from '../../domain/models/request';
 
 export interface RequestsState {
 

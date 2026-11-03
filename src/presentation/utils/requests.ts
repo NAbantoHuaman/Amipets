@@ -11,6 +11,6 @@ export {
   shortCode,
   generateShortCode,
   describeRequest,
-} from '../application/services/requestService';
+} from '../../application/services/requestService';
 
-export type { RequestFilters } from '../application/services/requestService';
+export type { RequestFilters } from '../../application/services/requestService';

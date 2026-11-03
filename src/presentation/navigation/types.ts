@@ -1,5 +1,5 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
-import { Priority, RequestStatus, ServiceType } from '../domain/models/request';
+import { Priority, RequestStatus, ServiceType } from '../../domain/models/request';
 
 export type TabParamList = {
   Home: undefined;

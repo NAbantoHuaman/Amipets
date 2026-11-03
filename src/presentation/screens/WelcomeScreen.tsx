@@ -94,7 +94,7 @@ export function WelcomeScreen({ navigation }: Props) {
           <FadeInView delay={120} distance={14} scale>
             <View style={styles.hero}>
               <Image
-                source={require('../../assets/images/welcome.jpg')}
+                source={require('../../../assets/images/welcome.jpg')}
                 style={styles.heroImage}
                 resizeMode="cover"
               />

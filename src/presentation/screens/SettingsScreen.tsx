@@ -25,7 +25,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useRequests } from '../context/RequestsContext';
 import { useToast } from '../context/ToastContext';
-import { ServiceType, Species } from '../models/request';
+import { ServiceType, Species } from '../../domain/models/request';
 import { colors, common, fonts, radius, shadows, spacing, typography } from '../theme';
 import { SERVICE_META, SPECIES_META } from '../utils/requestMeta';
 

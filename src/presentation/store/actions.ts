@@ -1,4 +1,4 @@
-import { RequestChanges, RequestStatus, VeterinaryRequest } from '../models/request';
+import { RequestChanges, RequestStatus, VeterinaryRequest } from '../../domain/models/request';
 
 export const ActionTypes = {
   LOAD: 'LOAD',

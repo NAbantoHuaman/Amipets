@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { VeterinaryRequest } from '../models/request';
+import { VeterinaryRequest } from '../../domain/models/request';
 import { colors, common, fonts, radius, spacing } from '../theme';
 import { formatRelative, formatTime } from '../utils/date';
 import { SERVICE_META } from '../utils/requestMeta';

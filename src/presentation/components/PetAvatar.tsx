@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Species } from '../models/request';
+import { Species } from '../../domain/models/request';
 import { colors } from '../theme';
 import { SPECIES_META } from '../utils/requestMeta';
 

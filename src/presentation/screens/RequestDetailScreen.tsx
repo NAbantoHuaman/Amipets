@@ -24,7 +24,7 @@ import {
 } from '../components';
 import { useRequests } from '../context/RequestsContext';
 import { useToast } from '../context/ToastContext';
-import { Priority, RequestStatus, REQUEST_STATUSES } from '../models/request';
+import { Priority, RequestStatus, REQUEST_STATUSES } from '../../domain/models/request';
 import { RootStackParamList } from '../navigation/types';
 import { colors, common, fonts, radius, shadows, spacing, typography } from '../theme';
 import { formatDateTime, formatRelative } from '../utils/date';

@@ -1,7 +1,7 @@
 import React, { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
-import { RegisterUserInput, Session, User } from '../domain/models/user';
-import { fullName, shortGreetingName } from '../application/services/authService';
-import { authRepository, DEFAULT_ADMIN_USER } from '../infrastructure/repositories/InMemoryAuthRepository';
+import { RegisterUserInput, Session, User } from '../../domain/models/user';
+import { fullName, shortGreetingName } from '../../application/services/authService';
+import { authRepository, DEFAULT_ADMIN_USER } from '../../infrastructure/repositories/InMemoryAuthRepository';
 
 export { shortGreetingName, fullName };
 export type { Session, RegisterUserInput, User };

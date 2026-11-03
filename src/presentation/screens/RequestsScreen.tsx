@@ -7,7 +7,7 @@ import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { EmptyState, FadeInView, FilterOption, FilterTabs, PressableScale, RequestCard, SearchBar } from '../components';
 import { useRequests } from '../context/RequestsContext';
-import { Priority, PRIORITIES, RequestStatus, REQUEST_STATUSES } from '../models/request';
+import { Priority, PRIORITIES, RequestStatus, REQUEST_STATUSES } from '../../domain/models/request';
 import { RootStackParamList, TabParamList } from '../navigation/types';
 import { colors, common, fonts, radius, spacing, typography } from '../theme';
 import { PRIORITY_META, STATUS_META } from '../utils/requestMeta';

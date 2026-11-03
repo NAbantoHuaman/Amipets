@@ -1,4 +1,4 @@
-import { RequestInput } from '../models/request';
+import { RequestInput } from '../../domain/models/request';
 
 export type FormErrors = Partial<Record<keyof RequestInput, string>>;
 

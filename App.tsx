@@ -11,11 +11,11 @@ import {
 } from '@expo-google-fonts/poppins';
 import { Caveat_600SemiBold } from '@expo-google-fonts/caveat';
 
-import { AuthProvider } from './src/context/AuthContext';
-import { RequestsProvider } from './src/context/RequestsProvider';
-import { ToastProvider } from './src/context/ToastContext';
-import { RootNavigator } from './src/navigation/RootNavigator';
-import { colors } from './src/theme';
+import { AuthProvider } from './src/presentation/context/AuthContext';
+import { RequestsProvider } from './src/presentation/context/RequestsProvider';
+import { ToastProvider } from './src/presentation/context/ToastContext';
+import { RootNavigator } from './src/presentation/navigation/RootNavigator';
+import { colors } from './src/presentation/theme';
 
 export default function App() {
   const [fontsLoaded] = useFonts({

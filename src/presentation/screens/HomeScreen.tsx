@@ -26,7 +26,7 @@ import {
 } from '../components';
 import { shortGreetingName, useAuth } from '../context/AuthContext';
 import { useRequests } from '../context/RequestsContext';
-import { RequestStatus, SERVICE_TYPES, ServiceType } from '../models/request';
+import { RequestStatus, SERVICE_TYPES, ServiceType } from '../../domain/models/request';
 import { RootStackParamList, TabParamList } from '../navigation/types';
 import { colors, common, fonts, radius, shadows, spacing, typography } from '../theme';
 import { formatLongToday, formatRelative, greeting, isSameDay } from '../utils/date';
@@ -173,7 +173,7 @@ export function HomeScreen({ navigation }: Props) {
 
         <FadeInView delay={80}>
           <View style={styles.hero}>
-            <Image source={require('../../assets/images/hero.jpg')} style={styles.heroImage} resizeMode="cover" />
+            <Image source={require('../../../assets/images/hero.jpg')} style={styles.heroImage} resizeMode="cover" />
             <View style={styles.heroText}>
               <View style={styles.heroPill}>
                 <PulseView minScale={0.7} maxScale={1.3} duration={1300}>

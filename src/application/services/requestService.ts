@@ -1,6 +1,6 @@
 import { Priority, RequestStatus, ServiceType, VeterinaryRequest } from '../../domain/models/request';
-import { PRIORITY_META, SERVICE_META, SPECIES_META, STATUS_META } from '../../utils/requestMeta';
-import { normalizePhone } from '../../utils/validation';
+import { PRIORITY_META, SERVICE_META, SPECIES_META, STATUS_META } from '../../presentation/utils/requestMeta';
+import { normalizePhone } from '../../presentation/utils/validation';
 
 export const priorityWeight = (p: Priority): number => PRIORITY_META[p].order;
 

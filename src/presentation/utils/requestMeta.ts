@@ -1,6 +1,6 @@
 import { ComponentProps } from 'react';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { Priority, RequestStatus, ServiceType, Species } from '../models/request';
+import { Priority, RequestStatus, ServiceType, Species } from '../../domain/models/request';
 import { colors } from '../theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];

@@ -6,7 +6,7 @@ import {
   ServicePrices,
   ServiceType,
   VeterinaryRequest,
-} from '../models/request';
+} from '../../domain/models/request';
 
 export interface RequestsContextValue {
   requests: VeterinaryRequest[];

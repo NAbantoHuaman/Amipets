@@ -1,3 +1,3 @@
-export * from '../../navigation/RootNavigator';
-export * from '../../navigation/MainTabs';
-export * from '../../navigation/types';
+export * from './RootNavigator';
+export * from './MainTabs';
+export * from './types';
