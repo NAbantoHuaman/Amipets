@@ -9,9 +9,9 @@
 - **Institución:** Escuela de Tecnología — IDAT
 - **Curso:** Desarrollo de Aplicaciones Móviles
 - **Integrantes:**
-  1. **Nestor Jose Abanto Huaman** — Arquitectura de Software, Modelado de Datos y Gestión de Estado Global (`domain/`, `application/`, `infrastructure/`, `store/`, `context/`)
-  2. **Elmo Torres Ordoñez** — Diseño UI/UX, Sistema de Diseño, Tokens, Accesibilidad WCAG y Componentes Reutilizables (`components/`, `theme/`)
-  3. **Joel Yaro Leguia** — Pantallas Asistenciales, Navegación, Lógica de Negocio y Flujo CRUD (`screens/`, `navigation/`, `utils/`)
+  1. **Nestor Jose Abanto Huaman** — Arquitectura Limpia en 4 Capas, Modelado de Dominio y Estado Global (`src/domain/`, `src/application/`, `src/infrastructure/`)
+  2. **Elmo Torres Ordoñez** — Diseño UI/UX, Sistema de Diseño, Tokens y Componentes Reutilizables (`src/presentation/components/`, `src/presentation/theme/`)
+  3. **Joel Yaro Leguia** — Pantallas Asistenciales, Alta de Recepcionistas, Agenda Compartida y Flujo CRUD (`src/presentation/screens/`, `src/presentation/navigation/`, `src/presentation/utils/`)
 
 ---
 
@@ -205,6 +205,17 @@ El proyecto implementa un sistema de diseño institucional, limpio y accesible:
 
 ---
 
+## 🪝 Uso de Hooks Obligatorios en el Proyecto
+
+| Hook Obligatorio | Archivos de Implementación | Justificación Técnica en Amipets |
+| :--- | :--- | :--- |
+| **`useState`** | `CreateRequestScreen`, `RegisterScreen`, `WelcomeScreen`, `HomeScreen`, `RequestsScreen`, `CalendarScreen`, `RequestDetailScreen`, `SettingsScreen` | Controla el estado reactivo local: inputs de login y registro de recepcionistas, turno asignado, filtros de búsqueda, selector de fecha activa, switches y modales interactivos. |
+| **`useEffect`** | `RequestsProvider.tsx`, `RequestsScreen.tsx`, `CreateRequestScreen.tsx` | Sincroniza en segundo plano las solicitudes con el almacenamiento local, coordina parámetros de navegación enviados desde el Dashboard y activa animaciones escalonadas. |
+| **`useReducer`** | `RequestsProvider.tsx` (`requestsReducer.ts`, `actions.ts`, `initialState.ts`) | Centraliza la máquina de estados del CRUD clínico (`CREATE`, `UPDATE`, `UPDATE_STATUS`, `DELETE`, `CLEAR_ALL`) en una función pura, garantizando inmutabilidad y transiciones predecibles. |
+| **`useContext` (Context API)** | `RequestsProvider.tsx`, `AuthContext.tsx`, `ToastContext.tsx` | Comparte el estado global clínico, la sesión activa del personal y el sistema de alertas Toast con botón Deshacer a lo largo de toda la jerarquía de componentes sin *prop drilling*. |
+
+---
+
 ## 🏛️ Clean Architecture (4 Capas Claras)
 
 El proyecto adopta **Clean Architecture**, desacoplando responsabilidades en 4 capas concéntricas con flujo de dependencias unidireccional:
@@ -254,7 +265,9 @@ Amipets/
 │       │   └── ...
 │       ├── navigation/                 # RootNavigator (Stack) y MainTabs (Bottom Tabs)
 │       ├── context/                    # AuthContext, RequestsContext, RequestsProvider, ToastContext
-│       └── theme/                      # Tokens (colors, typography, spacing, radius, shadows)
+│       ├── store/                      # Reducer puro, estado inicial y acciones del CRUD
+│       ├── theme/                      # Tokens (colors, typography, spacing, radius, shadows)
+│       └── utils/                      # Formateadores de fecha, IDs, metadatos y validaciones UI
 ├── App.tsx                     # Punto de entrada con fuentes y Providers
 ├── app.json                    # Configuración de Expo / React Native
 ├── package.json                # Dependencias y scripts
