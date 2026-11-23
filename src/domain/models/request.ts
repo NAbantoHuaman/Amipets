@@ -21,6 +21,7 @@ export interface VeterinaryRequest {
   telefono: string;
   mascotaNombre: string;
   especie?: Species;
+  raza?: string;
   tipoServicio: ServiceType;
   prioridad: Priority;
   descripcion: string;
@@ -32,7 +33,7 @@ export interface VeterinaryRequest {
 
 export type RequestInput = Pick<
   VeterinaryRequest,
-  'clienteNombre' | 'telefono' | 'mascotaNombre' | 'especie' | 'tipoServicio' | 'prioridad' | 'descripcion'
+  'clienteNombre' | 'telefono' | 'mascotaNombre' | 'especie' | 'raza' | 'tipoServicio' | 'prioridad' | 'descripcion'
 > & {
   fechaRegistro?: string;
   registradoPor?: string;

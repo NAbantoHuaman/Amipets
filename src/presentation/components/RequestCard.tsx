@@ -43,7 +43,8 @@ function RequestCardBase({ request, onPress }: Props) {
         <View style={styles.serviceRow}>
           <Ionicons name={service.icon} size={13} color={service.color} />
           <Text style={styles.service} numberOfLines={1}>
-            {service.label} · {request.clienteNombre}
+            {service.label}
+            {request.raza ? ` · ${request.raza}` : ''} · {request.clienteNombre}
           </Text>
         </View>
 

@@ -1,3 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { generateId } from '../../application/utils/id';
 import {
   DEFAULT_SERVICE_PRICES,
   RequestChanges,
@@ -8,42 +10,63 @@ import {
   VeterinaryRequest,
 } from '../../domain/models/request';
 import { IRequestRepository } from '../../domain/repositories/IRequestRepository';
-import { generateId } from '../../presentation/utils/id';
 
 const STORAGE_REQUESTS_KEY = 'amipets_requests_v1';
 const STORAGE_PRICES_KEY = 'amipets_service_prices_v1';
-
-function readStorage<T>(key: string): T | null {
-  try {
-    if (typeof globalThis !== 'undefined' && 'localStorage' in globalThis && globalThis.localStorage) {
-      const raw = globalThis.localStorage.getItem(key);
-      return raw ? (JSON.parse(raw) as T) : null;
-    }
-  } catch {
-  }
-  return null;
-}
-
-function writeStorage<T>(key: string, value: T): void {
-  try {
-    if (typeof globalThis !== 'undefined' && 'localStorage' in globalThis && globalThis.localStorage) {
-      globalThis.localStorage.setItem(key, JSON.stringify(value));
-    }
-  } catch {
-  }
-}
 
 export class InMemoryRequestRepository implements IRequestRepository {
   private requests: VeterinaryRequest[] = [];
   private servicePrices: ServicePrices = { ...DEFAULT_SERVICE_PRICES };
 
   constructor(initialRequests: VeterinaryRequest[] = []) {
-    const persistedRequests = readStorage<VeterinaryRequest[]>(STORAGE_REQUESTS_KEY);
-    this.requests = Array.isArray(persistedRequests) ? persistedRequests : [...initialRequests];
+    this.requests = [...initialRequests];
+  }
 
-    const persistedPrices = readStorage<ServicePrices>(STORAGE_PRICES_KEY);
-    if (persistedPrices && typeof persistedPrices === 'object') {
-      this.servicePrices = { ...DEFAULT_SERVICE_PRICES, ...persistedPrices };
+  async loadPersistedRequests(): Promise<VeterinaryRequest[]> {
+    try {
+      const raw = await AsyncStorage.getItem(STORAGE_REQUESTS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          this.requests = parsed as VeterinaryRequest[];
+        }
+      }
+    } catch {
+      // Ignore AsyncStorage read errors
+    }
+    return [...this.requests];
+  }
+
+  async saveRequestsAsync(requests: VeterinaryRequest[]): Promise<void> {
+    this.requests = [...requests];
+    try {
+      await AsyncStorage.setItem(STORAGE_REQUESTS_KEY, JSON.stringify(this.requests));
+    } catch {
+      // Ignore AsyncStorage write errors
+    }
+  }
+
+  async loadPersistedServicePrices(): Promise<ServicePrices> {
+    try {
+      const raw = await AsyncStorage.getItem(STORAGE_PRICES_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          this.servicePrices = { ...DEFAULT_SERVICE_PRICES, ...parsed };
+        }
+      }
+    } catch {
+      // Ignore AsyncStorage read errors
+    }
+    return { ...this.servicePrices };
+  }
+
+  async saveServicePricesAsync(prices: ServicePrices): Promise<void> {
+    this.servicePrices = { ...prices };
+    try {
+      await AsyncStorage.setItem(STORAGE_PRICES_KEY, JSON.stringify(this.servicePrices));
+    } catch {
+      // Ignore AsyncStorage write errors
     }
   }
 
@@ -52,8 +75,7 @@ export class InMemoryRequestRepository implements IRequestRepository {
   }
 
   saveAllSync(requests: VeterinaryRequest[]): void {
-    this.requests = [...requests];
-    writeStorage(STORAGE_REQUESTS_KEY, this.requests);
+    void this.saveRequestsAsync(requests);
   }
 
   getServicePrices(): ServicePrices {
@@ -65,12 +87,12 @@ export class InMemoryRequestRepository implements IRequestRepository {
       ...this.servicePrices,
       [service]: price,
     };
-    writeStorage(STORAGE_PRICES_KEY, this.servicePrices);
+    void this.saveServicePricesAsync(this.servicePrices);
     return { ...this.servicePrices };
   }
 
   async getAll(): Promise<VeterinaryRequest[]> {
-    return [...this.requests];
+    return this.loadPersistedRequests();
   }
 
   async getById(id: string): Promise<VeterinaryRequest | undefined> {
@@ -85,7 +107,7 @@ export class InMemoryRequestRepository implements IRequestRepository {
       fechaRegistro: input.fechaRegistro ?? new Date().toISOString(),
     };
     this.requests.unshift(newRequest);
-    writeStorage(STORAGE_REQUESTS_KEY, this.requests);
+    await this.saveRequestsAsync(this.requests);
     return newRequest;
   }
 
@@ -101,7 +123,7 @@ export class InMemoryRequestRepository implements IRequestRepository {
       fechaRegistro: changes.fechaRegistro ?? this.requests[index].fechaRegistro,
     };
     this.requests[index] = updated;
-    writeStorage(STORAGE_REQUESTS_KEY, this.requests);
+    await this.saveRequestsAsync(this.requests);
     return updated;
   }
 
@@ -112,19 +134,19 @@ export class InMemoryRequestRepository implements IRequestRepository {
   async delete(id: string): Promise<boolean> {
     const prevLen = this.requests.length;
     this.requests = this.requests.filter((r) => r.id !== id);
-    writeStorage(STORAGE_REQUESTS_KEY, this.requests);
+    await this.saveRequestsAsync(this.requests);
     return this.requests.length < prevLen;
   }
 
   async resetDemo(): Promise<VeterinaryRequest[]> {
     this.requests = [];
-    writeStorage(STORAGE_REQUESTS_KEY, this.requests);
+    await this.saveRequestsAsync(this.requests);
     return [];
   }
 
   async clearAll(): Promise<void> {
     this.requests = [];
-    writeStorage(STORAGE_REQUESTS_KEY, this.requests);
+    await this.saveRequestsAsync(this.requests);
   }
 }
 

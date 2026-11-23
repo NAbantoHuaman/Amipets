@@ -23,33 +23,41 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Welcome'>;
 export function WelcomeScreen({ navigation }: Props) {
   const { signIn } = useAuth();
   const { showToast } = useToast();
-  const [user, setUser] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{ user?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [loading, setLoading] = useState(false);
 
   const scrollRef = useRef<any>(null);
   const passwordRef = useRef<any>(null);
 
-  const submit = () => {
+  const submit = async () => {
     const next: typeof errors = {};
-    if (user.trim().length < 3) next.user = 'Ingresa tu usuario.';
-    if (password.length < 4) next.password = 'Ingresa tu contraseña.';
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      next.email = 'Ingresa un correo electrónico válido.';
+    }
+    if (password.length < 6) {
+      next.password = 'La contraseña debe tener al menos 6 caracteres.';
+    }
     setErrors(next);
     if (Object.keys(next).length) {
       showToast('error', 'Revisa tus datos', 'Completa los campos marcados.');
       return;
     }
+
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      const success = signIn(user, password);
-      if (!success) {
-        setErrors({ password: 'Credenciales no válidas. Verifica tu usuario o regístrate.' });
-        showToast('error', 'Acceso denegado', 'Verifica tus credenciales o crea una cuenta.');
+    try {
+      const res = await signIn(cleanEmail, password);
+      if (!res.success) {
+        const msg = res.error || 'Credenciales no válidas. Verifica tus datos o regístrate.';
+        setErrors({ password: msg });
+        showToast('error', 'Acceso denegado', msg);
       }
-    }, 350);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handlePasswordFocus = () => {
@@ -86,7 +94,7 @@ export function WelcomeScreen({ navigation }: Props) {
                 <PulseView minScale={0.8} maxScale={1.2} duration={1400}>
                   <View style={styles.statusDot} />
                 </PulseView>
-                <Text style={styles.statusTag}>Clínica</Text>
+                <Text style={styles.statusTag}>Clínica y Tienda</Text>
               </View>
             </View>
           </FadeInView>
@@ -109,24 +117,26 @@ export function WelcomeScreen({ navigation }: Props) {
               <View style={styles.cardHeader}>
                 <Text style={styles.title}>Iniciar sesión</Text>
                 <Text style={styles.subtitle}>
-                  Ingresa con tu cuenta para acceder al panel de la clínica.
+                  Ingresa con tu cuenta para continuar.
                 </Text>
               </View>
 
               <FormField
-                label="Usuario"
-                value={user}
+                label="Correo electrónico"
+                value={email}
                 onChangeText={(t) => {
-                  setUser(t);
-                  if (errors.user) setErrors((prev) => ({ ...prev, user: undefined }));
+                  setEmail(t);
+                  if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
                 }}
-                placeholder="Ingresa tu usuario"
+                placeholder="Ej. usuario@amipets.pe"
+                keyboardType="email-address"
                 autoCapitalize="none"
+                autoComplete="email"
                 returnKeyType="next"
                 onSubmitEditing={() => passwordRef.current?.focus()}
-                icon="person-outline"
-                error={errors.user}
-                accessibilityLabel="Campo de nombre de usuario"
+                icon="mail-outline"
+                error={errors.email}
+                accessibilityLabel="Campo de correo electrónico"
                 testID="login-user-input"
               />
 
@@ -249,7 +259,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: colors.surfaceWarm,
     borderWidth: 1,
-    borderColor: '#FFDDD9',
+    borderColor: colors.border,
     ...shadows.soft,
   },
   heroImage: {

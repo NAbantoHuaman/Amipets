@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { NavigationAction, usePreventRemove } from '@react-navigation/native';
 import {
+  BreedPickerModal,
   ConfirmDialog,
   EmptyState,
   FadeInView,
@@ -33,6 +34,7 @@ interface FormState {
   telefono: string;
   mascotaNombre: string;
   especie: Species;
+  raza: string;
   tipoServicio?: ServiceType;
   prioridad: Priority;
   descripcion: string;
@@ -43,6 +45,7 @@ const EMPTY_FORM: FormState = {
   telefono: '',
   mascotaNombre: '',
   especie: 'PERRO',
+  raza: '',
   tipoServicio: undefined,
   prioridad: 'MEDIA',
   descripcion: '',
@@ -65,17 +68,26 @@ export function CreateRequestScreen({ navigation, route }: Props) {
         telefono: existing.telefono,
         mascotaNombre: existing.mascotaNombre,
         especie: existing.especie ?? 'OTRO',
+        raza: existing.raza ?? '',
         tipoServicio: existing.tipoServicio,
         prioridad: existing.prioridad,
         descripcion: existing.descripcion,
       };
     }
     const service = route.params?.service;
-    return { ...EMPTY_FORM, tipoServicio: service, prioridad: service === 'EMERGENCIA' ? 'URGENTE' : 'MEDIA' };
-
+    const initialSpecies = route.params?.initialSpecies ?? 'PERRO';
+    const initialBreed = route.params?.initialBreed ?? '';
+    return {
+      ...EMPTY_FORM,
+      especie: initialSpecies,
+      raza: initialBreed,
+      tipoServicio: service,
+      prioridad: service === 'EMERGENCIA' ? 'URGENTE' : 'MEDIA',
+    };
   }, []);
 
   const [form, setForm] = useState<FormState>(initialForm);
+  const [showBreedPicker, setShowBreedPicker] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -131,6 +143,7 @@ export function CreateRequestScreen({ navigation, route }: Props) {
       telefono: form.telefono,
       mascotaNombre: form.mascotaNombre,
       especie: form.especie,
+      raza: form.raza.trim() || undefined,
       tipoServicio: form.tipoServicio as ServiceType,
       prioridad: form.prioridad,
       descripcion: form.descripcion,
@@ -269,6 +282,47 @@ export function CreateRequestScreen({ navigation, route }: Props) {
                 onSubmitEditing={() => descRef.current?.focus()}
                 error={errors.mascotaNombre}
               />
+              <FormField
+                testID="form-breed"
+                label="Raza (opcional)"
+                icon="ribbon-outline"
+                rightIcon={
+                  form.especie === 'PERRO' || form.especie === 'GATO'
+                    ? 'search-outline'
+                    : undefined
+                }
+                onRightIconPress={
+                  form.especie === 'PERRO' || form.especie === 'GATO'
+                    ? () => setShowBreedPicker(true)
+                    : undefined
+                }
+                rightIconLabel="Explorar razas"
+                placeholder={
+                  form.especie === 'GATO'
+                    ? 'ej. Siamés, Persa o Mestizo'
+                    : 'ej. Golden Retriever, Beagle o Mestizo'
+                }
+                value={form.raza}
+                onChangeText={(t) => update('raza', t)}
+                maxLength={50}
+                autoCapitalize="words"
+              />
+              {(form.especie === 'PERRO' || form.especie === 'GATO') && (
+                <View style={styles.breedExploreRow}>
+                  <PressableScale
+                    onPress={() => setShowBreedPicker(true)}
+                    style={styles.breedExplorePill}
+                    accessibilityRole="button"
+                    accessibilityLabel="Explorar razas disponibles"
+                    testID="form-explore-breeds"
+                  >
+                    <Ionicons name="book-outline" size={13} color={colors.primaryDark} />
+                    <Text style={styles.breedExploreText}>
+                      Explorar razas de {form.especie === 'PERRO' ? 'perro' : 'gato'}
+                    </Text>
+                  </PressableScale>
+                </View>
+              )}
             </View>
           </FadeInView>
 
@@ -502,6 +556,16 @@ export function CreateRequestScreen({ navigation, route }: Props) {
           if (action) navigation.dispatch(action);
         }}
       />
+
+      {(form.especie === 'PERRO' || form.especie === 'GATO') && (
+        <BreedPickerModal
+          visible={showBreedPicker}
+          species={form.especie}
+          selectedBreed={form.raza}
+          onSelect={(breedName) => update('raza', breedName)}
+          onClose={() => setShowBreedPicker(false)}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -560,6 +624,28 @@ const styles = StyleSheet.create({
   },
   speciesLabel: { fontFamily: fonts.medium, fontSize: 12, color: colors.textMuted },
   speciesLabelActive: { color: colors.primaryDark, fontFamily: fonts.bold },
+  breedExploreRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    marginTop: -4,
+    marginBottom: spacing.sm,
+  },
+  breedExplorePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+  },
+  breedExploreText: {
+    fontFamily: fonts.semibold,
+    fontSize: 11.5,
+    color: colors.primaryDark,
+  },
 
   sectionHeaderBetween: {
     flexDirection: 'row',
@@ -647,7 +733,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textMuted,
   },
-  tileError: { borderColor: '#F0BDB8' },
+  tileError: { borderColor: colors.dangerBorder },
   triageSegmentBar: {
     flexDirection: 'row',
     backgroundColor: colors.track,

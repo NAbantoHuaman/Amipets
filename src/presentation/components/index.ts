@@ -1,4 +1,5 @@
 export { ConfirmDialog } from './ConfirmDialog';
+export { CatalogPickerModal } from './CatalogPickerModal';
 export { EmptyState } from './EmptyState';
 export { FadeInView } from './FadeInView';
 export { FilterTabs } from './FilterTabs';
@@ -10,8 +11,11 @@ export { PetAvatar } from './PetAvatar';
 export { PressableScale } from './PressableScale';
 export { PrimaryButton } from './PrimaryButton';
 export { PulseView } from './PulseView';
-export { Chip, PriorityChip, ServiceChip, StatusChip } from './Chips';
+export { Chip, OrderCategoryChip, OrderStatusChip, PriorityChip, ServiceChip, StatusChip } from './Chips';
+export { OrderCard } from './OrderCard';
 export { RequestCard } from './RequestCard';
 export { ScreenHeader } from './ScreenHeader';
 export { SearchBar } from './SearchBar';
 export { SectionHeader } from './SectionHeader';
+export { WeatherPetCard } from './WeatherPetCard';
+export { BreedPickerModal } from './BreedPickerModal';

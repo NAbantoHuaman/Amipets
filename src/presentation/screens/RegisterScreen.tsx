@@ -46,7 +46,7 @@ export function RegisterScreen({ navigation }: Props) {
   const { showToast } = useToast();
 
   const [displayName, setDisplayName] = useState('');
-  const [userName, setUserName] = useState('');
+  const [email, setEmail] = useState('');
   const [selectedShift, setSelectedShift] = useState<string>(SHIFT_OPTIONS[0].id);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -56,14 +56,14 @@ export function RegisterScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
 
   const scrollRef = useRef<any>(null);
-  const userRef = useRef<any>(null);
+  const emailRef = useRef<any>(null);
   const passRef = useRef<any>(null);
   const confirmRef = useRef<any>(null);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const valResult = validateRegistrationInput({
       displayName,
-      userName,
+      email,
       password,
       role: 'RECEPTIONIST',
       shift: selectedShift,
@@ -85,29 +85,26 @@ export function RegisterScreen({ navigation }: Props) {
     }
 
     setLoading(true);
-
-    setTimeout(() => {
-      setLoading(false);
-      const res = signUp({
+    try {
+      const res = await signUp({
         displayName: displayName.trim(),
-        userName: userName.trim().toLowerCase(),
-        password: password.trim(),
+        email: email.trim().toLowerCase(),
+        password,
         role: 'RECEPTIONIST',
         shift: selectedShift,
       });
 
       if (!res.success) {
-        setErrors({ userName: res.error || 'Error al registrar.' });
-        showToast('error', 'Usuario no disponible', res.error || 'Verifica los datos ingresados.');
+        const msg = res.error || 'No se pudo completar el registro.';
+        setErrors({ email: msg });
+        showToast('error', 'No se pudo crear la cuenta', msg);
         return;
       }
 
-      showToast(
-        'success',
-        'Cuenta creada',
-        `Bienvenido(a), ${displayName.trim()}.`
-      );
-    }, 400);
+      showToast('success', 'Cuenta creada', `Bienvenido(a), ${displayName.trim()}.`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -161,7 +158,7 @@ export function RegisterScreen({ navigation }: Props) {
                 error={errors.displayName}
                 autoCapitalize="words"
                 returnKeyType="next"
-                onSubmitEditing={() => userRef.current?.focus()}
+                onSubmitEditing={() => emailRef.current?.focus()}
               />
 
               <Text style={styles.sectionLabel}>Horario</Text>
@@ -198,16 +195,18 @@ export function RegisterScreen({ navigation }: Props) {
               </View>
 
               <FormField
-                ref={userRef}
-                label="Usuario"
-                value={userName}
+                ref={emailRef}
+                label="Correo electrónico"
+                value={email}
                 onChangeText={(text) => {
-                  setUserName(text);
-                  if (errors.userName) setErrors((prev) => ({ ...prev, userName: '' }));
+                  setEmail(text);
+                  if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
                 }}
-                placeholder="Ej. jperez"
-                icon="at-outline"
-                error={errors.userName}
+                placeholder="Ej. maria@amipets.pe"
+                keyboardType="email-address"
+                autoComplete="email"
+                icon="mail-outline"
+                error={errors.email}
                 autoCapitalize="none"
                 returnKeyType="next"
                 onSubmitEditing={() => passRef.current?.focus()}
@@ -221,7 +220,7 @@ export function RegisterScreen({ navigation }: Props) {
                   setPassword(text);
                   if (errors.password) setErrors((prev) => ({ ...prev, password: '' }));
                 }}
-                placeholder="Mínimo 4 caracteres"
+                placeholder="Mínimo 6 caracteres"
                 icon="lock-closed-outline"
                 rightIcon={showPassword ? 'eye-off-outline' : 'eye-outline'}
                 onRightIconPress={() => setShowPassword((p) => !p)}

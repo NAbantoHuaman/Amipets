@@ -1,0 +1,276 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// This security rules file assumes the following Firestore collections:
+//
+// Collection: users
+// Document ID: {userId} (must match authenticated Firebase Auth UID)
+// Fields:
+//   - displayName: string (required, 1..80 chars)
+//   - email: string (required, 3..120 chars)
+//   - role: string (optional, 'ADMIN' | 'RECEPTIONIST'; self-assignment of 'ADMIN' is blocked)
+//   - roleLabel: string (optional, 0..80 chars)
+//   - title: string (optional, 0..30 chars)
+//   - clinicName: string (optional, 0..100 chars)
+//   - cmpv: string (optional, 0..100 chars)
+//   - shift: string (optional, 0..80 chars)
+//   - createdAt: string (<= 40 chars) or timestamp (optional, immutable once set)
+//
+// Collection: orders
+// Document ID: {orderId}
+// Fields:
+//   - userId: string (required, immutable, must equal request.auth.uid)
+//   - clienteNombre: string (required, 2..80 chars)
+//   - producto: string (required, 2..120 chars)
+//   - categoria: string (required, 'ALIMENTO' | 'ACCESORIOS' | 'ROPA' | 'JUGUETES')
+//   - cantidad: int (required, 1..999)
+//   - precio: number (required, > 0 && <= 50000)
+//   - estado: string (required, 'PENDIENTE' | 'EN_PROCESO' | 'ENTREGADO' | 'CANCELADO')
+//   - fechaRegistro: string (required, 8..40 chars)
+//   - id: string (optional, 0..80 chars)
+//   - telefono: string | null (optional, 0..30 chars)
+//   - mascotaNombre: string | null (optional, 0..60 chars)
+//   - especie: string | null (optional, 'PERRO' | 'GATO' | 'CONEJO' | 'OTRO')
+//   - productoId: int | null (optional, >= 1)
+//   - marca: string | null (optional, 0..60 chars)
+//   - sku: string | null (optional, 0..40 chars)
+//   - notas: string | null (optional, 0..300 chars)
+//   - registradoPor: string | null (optional, 0..100 chars)
+//   - registradoPorUsuario: string | null (optional, 0..100 chars)
+//   - comprobanteUrl: string | null (optional, 0..600 chars)
+//   - updatedAt: string | null (optional, 0..40 chars)
+//   - syncedAt: string | null (optional, 0..40 chars)
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Check if the request is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Check if the authenticated user owns the document by UID path
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Check trusted admin authority from Firebase Auth custom claims only
+    function isAdmin() {
+      return isSignedIn() &&
+             (request.auth.token.admin == true || request.auth.token.role == 'ADMIN');
+    }
+
+    // Ensure userId matches authenticated UID on create
+    function uidUnchanged() {
+      return !('userId' in request.resource.data) ||
+             request.resource.data.userId == request.auth.uid;
+    }
+
+    // Ensure userId is immutable on update
+    function uidNotModified() {
+      return !('userId' in request.resource.data) ||
+             request.resource.data.userId == resource.data.userId;
+    }
+
+    // Validate required fields exist
+    function hasRequiredFields(data, fields) {
+      return data.keys().hasAll(fields);
+    }
+
+    // Validate document contains only whitelisted fields
+    function hasOnlyAllowedFields(data, fields) {
+      return data.keys().hasOnly(fields);
+    }
+
+    // Validate non-empty string within [minLen, maxLen]
+    function isNonEmptyString(value, minLen, maxLen) {
+      return value is string &&
+             value.size() >= minLen &&
+             value.size() <= maxLen;
+    }
+
+    // Validate optional string field (when present, must be string <= maxLen)
+    function isValidOptionalString(data, field, maxLen) {
+      return !(field in data) ||
+             (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    // Validate optional nullable string field (when present, null or string <= maxLen)
+    function isValidNullableString(data, field, maxLen) {
+      return !(field in data) ||
+             data[field] == null ||
+             (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    // Validate integer within [minVal, maxVal]
+    function isValidIntRange(value, minVal, maxVal) {
+      return value is int && value >= minVal && value <= maxVal;
+    }
+
+    // Validate number strictly greater than minVal and <= maxVal
+    function isValidPositiveNumber(value, maxVal) {
+      return value is number && value > 0 && value <= maxVal;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasRequiredFields(data, ['displayName', 'email']) &&
+             hasOnlyAllowedFields(data, [
+               'displayName',
+               'email',
+               'role',
+               'roleLabel',
+               'title',
+               'clinicName',
+               'cmpv',
+               'shift',
+               'createdAt'
+             ]) &&
+             isNonEmptyString(data.displayName, 1, 80) &&
+             isNonEmptyString(data.email, 3, 120) &&
+             (!('role' in data) || (data.role is string && data.role in ['ADMIN', 'RECEPTIONIST'])) &&
+             isValidOptionalString(data, 'roleLabel', 80) &&
+             isValidOptionalString(data, 'title', 30) &&
+             isValidOptionalString(data, 'clinicName', 100) &&
+             isValidOptionalString(data, 'cmpv', 100) &&
+             isValidOptionalString(data, 'shift', 80) &&
+             (!('createdAt' in data) ||
+              data.createdAt is timestamp ||
+              (data.createdAt is string && data.createdAt.size() <= 40));
+    }
+
+    function canCreateUserRole(data) {
+      return !('role' in data) ||
+             data.role == 'RECEPTIONIST' ||
+             isAdmin();
+    }
+
+    function canUpdateUserImmutableAndRole() {
+      let createdAtUnchanged =
+        !('createdAt' in resource.data) ||
+        (('createdAt' in request.resource.data) &&
+         request.resource.data.createdAt == resource.data.createdAt);
+
+      let roleSafe =
+        isAdmin() ||
+        (!('role' in request.resource.data) && !('role' in resource.data)) ||
+        (('role' in resource.data) &&
+         ('role' in request.resource.data) &&
+         request.resource.data.role == resource.data.role) ||
+        (!('role' in resource.data) &&
+         ('role' in request.resource.data) &&
+         request.resource.data.role == 'RECEPTIONIST');
+
+      return createdAtUnchanged && roleSafe;
+    }
+
+    function isValidOrder(data) {
+      return hasRequiredFields(data, [
+               'userId',
+               'clienteNombre',
+               'producto',
+               'categoria',
+               'cantidad',
+               'precio',
+               'estado',
+               'fechaRegistro'
+             ]) &&
+             hasOnlyAllowedFields(data, [
+               'userId',
+               'clienteNombre',
+               'producto',
+               'categoria',
+               'cantidad',
+               'precio',
+               'estado',
+               'fechaRegistro',
+               'id',
+               'telefono',
+               'mascotaNombre',
+               'especie',
+               'productoId',
+               'marca',
+               'sku',
+               'notas',
+               'registradoPor',
+               'registradoPorUsuario',
+               'comprobanteUrl',
+               'updatedAt',
+               'syncedAt'
+             ]) &&
+             data.userId is string &&
+             data.userId == request.auth.uid &&
+             isNonEmptyString(data.clienteNombre, 2, 80) &&
+             isNonEmptyString(data.producto, 2, 120) &&
+             data.categoria is string &&
+             data.categoria in ['ALIMENTO', 'ACCESORIOS', 'ROPA', 'JUGUETES'] &&
+             isValidIntRange(data.cantidad, 1, 999) &&
+             isValidPositiveNumber(data.precio, 50000) &&
+             data.estado is string &&
+             data.estado in ['PENDIENTE', 'EN_PROCESO', 'ENTREGADO', 'CANCELADO'] &&
+             isNonEmptyString(data.fechaRegistro, 8, 40) &&
+             isValidOptionalString(data, 'id', 80) &&
+             isValidNullableString(data, 'telefono', 30) &&
+             isValidNullableString(data, 'mascotaNombre', 60) &&
+             (!('especie' in data) ||
+              data.especie == null ||
+              (data.especie is string && data.especie in ['PERRO', 'GATO', 'CONEJO', 'OTRO'])) &&
+             (!('productoId' in data) ||
+              data.productoId == null ||
+              (data.productoId is int && data.productoId >= 1)) &&
+             isValidNullableString(data, 'marca', 60) &&
+             isValidNullableString(data, 'sku', 40) &&
+             isValidNullableString(data, 'notas', 300) &&
+             isValidNullableString(data, 'registradoPor', 100) &&
+             isValidNullableString(data, 'registradoPorUsuario', 100) &&
+             isValidNullableString(data, 'comprobanteUrl', 600) &&
+             isValidNullableString(data, 'updatedAt', 40) &&
+             isValidNullableString(data, 'syncedAt', 40);
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) &&
+                       isValidUser(request.resource.data) &&
+                       canCreateUserRole(request.resource.data);
+      allow update: if isOwner(userId) &&
+                       isValidUser(request.resource.data) &&
+                       canUpdateUserImmutableAndRole();
+      allow delete: if isOwner(userId);
+    }
+
+    match /orders/{orderId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() &&
+                       uidUnchanged() &&
+                       isValidOrder(request.resource.data);
+      allow update: if isSignedIn() &&
+                       resource.data.userId == request.auth.uid &&
+                       uidNotModified() &&
+                       request.resource.data.userId == resource.data.userId &&
+                       isValidOrder(request.resource.data);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // Default deny all other collections and subcollections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

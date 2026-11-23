@@ -1,0 +1,50 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyAwe__6E4uuLzLWS574xJnK5izRs07z7gs",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "amipets-d469c.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "amipets-d469c",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "amipets-d469c.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "375008094622",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:375008094622:web:3c76cff5544047c25f8e8f"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyAwe__6E4uuLzLWS574xJnK5izRs07z7gs",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "amipets-d469c.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "amipets-d469c",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "amipets-d469c.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "375008094622",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:375008094622:web:3c76cff5544047c25f8e8f"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyAwe__6E4uuLzLWS574xJnK5izRs07z7gs",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "amipets-d469c.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "amipets-d469c",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "amipets-d469c.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "375008094622",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:375008094622:web:3c76cff5544047c25f8e8f"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

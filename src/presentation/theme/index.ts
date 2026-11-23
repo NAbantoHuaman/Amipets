@@ -24,21 +24,21 @@ export const radius = {
 
 export const shadows = {
   soft: Platform.select<ViewStyle>({
-    android: { elevation: 2, shadowColor: '#18181B' },
+    android: { elevation: 2, shadowColor: colors.shadow },
     default: {
-      shadowColor: '#18181B',
-      shadowOpacity: 0.06,
+      shadowColor: colors.shadow,
+      shadowOpacity: 0.05,
       shadowRadius: 12,
       shadowOffset: { width: 0, height: 4 },
     },
   }),
   raised: Platform.select<ViewStyle>({
-    android: { elevation: 5, shadowColor: colors.shadow },
+    android: { elevation: 4, shadowColor: colors.shadow },
     default: {
       shadowColor: colors.shadow,
-      shadowOpacity: 0.16,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.12,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 6 },
     },
   }),
 };

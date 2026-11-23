@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   ActivityIndicator,
   Image,
@@ -18,18 +19,23 @@ import {
   FadeInView,
   IconButton,
   IconTile,
+  OrderCard,
   PressableScale,
   PrimaryButton,
   PulseView,
   RequestCard,
   SectionHeader,
+  WeatherPetCard,
 } from '../components';
 import { shortGreetingName, useAuth } from '../context/AuthContext';
+import { useOrders } from '../context/OrdersContext';
 import { useRequests } from '../context/RequestsContext';
+import { calculateOrderTotal, countOrdersByStatus } from '../../application/services/orderService';
 import { RequestStatus, SERVICE_TYPES, ServiceType } from '../../domain/models/request';
 import { RootStackParamList, TabParamList } from '../navigation/types';
 import { colors, common, fonts, radius, shadows, spacing, typography } from '../theme';
 import { formatLongToday, formatRelative, greeting, isSameDay } from '../utils/date';
+import { ORDER_STATUS_META } from '../utils/orderMeta';
 import { SERVICE_META, STATUS_META } from '../utils/requestMeta';
 import { activeUrgent, countByService, countByStatus, sortByNewest } from '../utils/requests';
 
@@ -39,27 +45,57 @@ type Props = CompositeScreenProps<
 >;
 
 const SUMMARY: { status: RequestStatus; label: string; countColor: string; labelColor: string }[] = [
-  { status: 'PENDIENTE', label: 'Pendientes', countColor: '#18181B', labelColor: '#92400E' },
-  { status: 'EN_ATENCION', label: 'En atención', countColor: '#18181B', labelColor: '#1E40AF' },
-  { status: 'FINALIZADO', label: 'Finalizadas', countColor: '#18181B', labelColor: '#065F46' },
+  { status: 'PENDIENTE', label: 'Pendientes', countColor: colors.text, labelColor: '#925B14' },
+  { status: 'EN_ATENCION', label: 'En atención', countColor: colors.text, labelColor: '#1E4E8C' },
+  { status: 'FINALIZADO', label: 'Finalizadas', countColor: colors.text, labelColor: colors.primaryDark },
 ];
 
 export function HomeScreen({ navigation }: Props) {
   const { session } = useAuth();
   const { requests, loading, servicePrices } = useRequests();
+  const { orders } = useOrders();
   const [showNotifications, setShowNotifications] = useState(false);
   const [readIds, setReadIds] = useState<Record<string, boolean>>({});
 
+  useEffect(() => {
+    let active = true;
+    AsyncStorage.getItem('amipets_notif_read_v1')
+      .then((raw) => {
+        if (!active || !raw) return;
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          setReadIds(parsed as Record<string, boolean>);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const persistReadIds = (next: Record<string, boolean>) => {
+    void AsyncStorage.setItem('amipets_notif_read_v1', JSON.stringify(next)).catch(() => {});
+  };
+
   const counts = useMemo(() => countByStatus(requests), [requests]);
+  const orderCounts = useMemo(() => countOrdersByStatus(orders), [orders]);
   const urgent = useMemo(() => activeUrgent(requests), [requests]);
   const latest = useMemo(() => sortByNewest(requests).slice(0, 3), [requests]);
+  const latestOrders = useMemo(
+    () =>
+      [...orders]
+        .sort((a, b) => new Date(b.fechaRegistro).getTime() - new Date(a.fechaRegistro).getTime())
+        .slice(0, 2),
+    [orders],
+  );
   const todayCount = useMemo(() => requests.filter((r) => isSameDay(r.fechaRegistro, new Date())).length, [requests]);
   const serviceCounts = useMemo(() => countByService(requests), [requests]);
 
   const notifications = useMemo(() => {
     const list: {
       id: string;
-      requestId: string;
+      kind: 'request' | 'order';
+      targetId: string;
       icon: any;
       color: string;
       bg: string;
@@ -73,7 +109,8 @@ export function HomeScreen({ navigation }: Props) {
       if (r.prioridad === 'URGENTE' && r.estado !== 'FINALIZADO') {
         list.push({
           id: `notif-urg-${r.id}`,
-          requestId: r.id,
+          kind: 'request',
+          targetId: r.id,
           icon: 'alert-circle',
           color: colors.danger,
           bg: colors.dangerSoft,
@@ -85,7 +122,8 @@ export function HomeScreen({ navigation }: Props) {
       } else if (r.estado === 'EN_ATENCION') {
         list.push({
           id: `notif-prog-${r.id}`,
-          requestId: r.id,
+          kind: 'request',
+          targetId: r.id,
           icon: 'medical',
           color: colors.inProgress,
           bg: colors.inProgressSoft,
@@ -97,7 +135,8 @@ export function HomeScreen({ navigation }: Props) {
       } else if (r.estado === 'PENDIENTE') {
         list.push({
           id: `notif-pend-${r.id}`,
-          requestId: r.id,
+          kind: 'request',
+          targetId: r.id,
           icon: 'time',
           color: colors.pending,
           bg: colors.pendingSoft,
@@ -109,7 +148,8 @@ export function HomeScreen({ navigation }: Props) {
       } else if (r.estado === 'FINALIZADO') {
         list.push({
           id: `notif-done-${r.id}`,
-          requestId: r.id,
+          kind: 'request',
+          targetId: r.id,
           icon: 'checkmark-circle',
           color: colors.done,
           bg: colors.doneSoft,
@@ -121,8 +161,39 @@ export function HomeScreen({ navigation }: Props) {
       }
     }
 
+    for (const o of orders) {
+      if (o.estado === 'PENDIENTE') {
+        const total = calculateOrderTotal(o.cantidad, o.precio);
+        list.push({
+          id: `notif-ord-pend-${o.id}`,
+          kind: 'order',
+          targetId: o.id,
+          icon: 'bag-handle',
+          color: colors.pending,
+          bg: colors.pendingSoft,
+          category: 'Pedido nuevo',
+          title: `Pedido pendiente: ${o.producto}`,
+          message: `${o.clienteNombre} · ${o.cantidad} und. · S/. ${total.toFixed(2)}`,
+          time: formatRelative(o.fechaRegistro),
+        });
+      } else if (o.estado === 'EN_PROCESO') {
+        list.push({
+          id: `notif-ord-proc-${o.id}`,
+          kind: 'order',
+          targetId: o.id,
+          icon: 'construct',
+          color: colors.inProgress,
+          bg: colors.inProgressSoft,
+          category: 'En preparación',
+          title: `Preparando: ${o.producto}`,
+          message: `Cliente: ${o.clienteNombre} · ${o.cantidad} und.`,
+          time: formatRelative(o.fechaRegistro),
+        });
+      }
+    }
+
     return list;
-  }, [requests]);
+  }, [requests, orders]);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !readIds[n.id]).length,
@@ -130,7 +201,11 @@ export function HomeScreen({ navigation }: Props) {
   );
 
   const toggleRead = (id: string) => {
-    setReadIds((prev) => ({ ...prev, [id]: !prev[id] }));
+    setReadIds((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      persistReadIds(next);
+      return next;
+    });
   };
 
   const markAllAsRead = () => {
@@ -139,9 +214,11 @@ export function HomeScreen({ navigation }: Props) {
       next[n.id] = true;
     }
     setReadIds(next);
+    persistReadIds(next);
   };
 
   const openDetail = (id: string) => navigation.navigate('RequestDetail', { requestId: id });
+  const openOrderDetail = (id: string) => navigation.navigate('OrderDetail', { orderId: id });
   const openCreate = (service?: ServiceType) => navigation.navigate('CreateRequest', service ? { service } : undefined);
   const openRequests = (params: TabParamList['Requests'] = {}) =>
     navigation.navigate('Requests', { status: 'TODOS', priority: 'TODAS', ...params, nonce: Date.now() });
@@ -162,6 +239,12 @@ export function HomeScreen({ navigation }: Props) {
               {shortGreetingName(session) || 'Dr. Carlos'}
             </Text>
           </View>
+          <IconButton
+            icon="calendar-outline"
+            onPress={() => navigation.navigate('Calendar')}
+            accessibilityLabel="Calendario clínico"
+            testID="home-calendar"
+          />
           <IconButton
             icon="notifications-outline"
             onPress={() => setShowNotifications(true)}
@@ -226,6 +309,28 @@ export function HomeScreen({ navigation }: Props) {
               );
             })}
           </View>
+        </FadeInView>
+
+        <FadeInView delay={145}>
+          <WeatherPetCard />
+          <PressableScale
+            onPress={() => navigation.navigate('BreedGuide')}
+            style={styles.breedBannerCard}
+            accessibilityRole="button"
+            accessibilityLabel="Abrir guía de razas de perros y gatos"
+            testID="home-breed-guide"
+          >
+            <View style={styles.breedBannerIcon}>
+              <Ionicons name="book-outline" size={20} color={colors.primaryDark} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.breedBannerTitle}>Guía clínica de razas</Text>
+              <Text style={styles.breedBannerSubtitle}>
+                Consulta peso ideal, longevidad y cuidados de perros y gatos
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.primaryDark} />
+          </PressableScale>
         </FadeInView>
 
         <FadeInView delay={160} style={styles.section}>
@@ -313,6 +418,72 @@ export function HomeScreen({ navigation }: Props) {
           </FadeInView>
         )}
 
+        <FadeInView delay={260} style={styles.section}>
+          <SectionHeader
+            title="Pedidos de tienda"
+            actionLabel="Ver pedidos"
+            onAction={() => navigation.navigate('Orders', { status: 'TODOS', nonce: Date.now() })}
+          />
+          <View style={styles.petShopCard}>
+            <View style={styles.petShopStatsRow}>
+              {(
+                [
+                  { status: 'PENDIENTE', label: 'Pendientes' },
+                  { status: 'EN_PROCESO', label: 'En proceso' },
+                  { status: 'ENTREGADO', label: 'Entregados' },
+                ] as const
+              ).map((item) => {
+                const meta = ORDER_STATUS_META[item.status];
+                return (
+                  <PressableScale
+                    key={item.status}
+                    onPress={() =>
+                      navigation.navigate('Orders', { status: item.status, nonce: Date.now() })
+                    }
+                    style={[styles.petShopStatBox, { backgroundColor: meta.background }]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${orderCounts[item.status]} pedidos ${item.label}`}
+                  >
+                    <Text style={[styles.petShopStatCount, { color: meta.color }]}>
+                      {orderCounts[item.status]}
+                    </Text>
+                    <Text style={styles.petShopStatLabel}>{item.label}</Text>
+                  </PressableScale>
+                );
+              })}
+            </View>
+            <View style={styles.petShopActionsRow}>
+              <PrimaryButton
+                title="Nuevo pedido"
+                onPress={() => navigation.navigate('CreateOrder')}
+                compact
+                icon="add-circle-outline"
+                trailingIcon={null}
+                style={{ flex: 1 }}
+                testID="home-new-order"
+              />
+              <PrimaryButton
+                title="Catálogo"
+                onPress={() => navigation.navigate('Catalog')}
+                variant="secondary"
+                compact
+                icon="storefront-outline"
+                trailingIcon={null}
+                style={{ flex: 1 }}
+                testID="home-catalog"
+              />
+            </View>
+          </View>
+
+          {latestOrders.length > 0 && (
+            <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
+              {latestOrders.map((o) => (
+                <OrderCard key={o.id} order={o} onPress={openOrderDetail} />
+              ))}
+            </View>
+          )}
+        </FadeInView>
+
         <FadeInView delay={300} style={styles.section}>
           <SectionHeader title="Ingresos recientes" actionLabel="Directorio completo" onAction={() => openRequests()} />
           {loading ? (
@@ -352,7 +523,7 @@ export function HomeScreen({ navigation }: Props) {
                   <Ionicons name="notifications-outline" size={18} color={colors.primaryDark} />
                 </View>
                 <View>
-                  <Text style={styles.modalTitle}>Avisos Clínicos</Text>
+                  <Text style={styles.modalTitle}>Avisos</Text>
                   <Text style={styles.modalSubtitle}>
                     {unreadCount > 0
                       ? `${unreadCount} ${unreadCount === 1 ? 'pendiente de revisión' : 'pendientes de revisión'}`
@@ -399,9 +570,17 @@ export function HomeScreen({ navigation }: Props) {
                       <PressableScale
                         key={n.id}
                         onPress={() => {
-                          setReadIds((prev) => ({ ...prev, [n.id]: true }));
+                          setReadIds((prev) => {
+                            const next = { ...prev, [n.id]: true };
+                            persistReadIds(next);
+                            return next;
+                          });
                           setShowNotifications(false);
-                          openDetail(n.requestId);
+                          if (n.kind === 'order') {
+                            openOrderDetail(n.targetId);
+                          } else {
+                            openDetail(n.targetId);
+                          }
                         }}
                         style={[styles.notifCard, isRead && styles.notifCardRead]}
                         accessibilityRole="button"
@@ -484,7 +663,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: colors.surfaceWarm,
     borderWidth: 1,
-    borderColor: '#FFDDD9',
+    borderColor: colors.border,
     ...shadows.raised,
   },
   heroImage: { position: 'absolute', right: -36, top: 0, bottom: 0, width: '112%', height: '100%' },
@@ -647,8 +826,68 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: -0.1,
   },
+  breedBannerCard: {
+    ...common.card,
+    marginTop: spacing.sm,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primaryBorder,
+  },
+  breedBannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  breedBannerTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 14.5,
+    color: colors.primaryDark,
+  },
+  breedBannerSubtitle: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 16,
+  },
   todayRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: spacing.sm },
   emptyCard: { ...common.card },
+  petShopCard: {
+    ...common.card,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  petShopStatsRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  petShopStatBox: {
+    flex: 1,
+    borderRadius: radius.md,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+  petShopStatCount: {
+    fontFamily: fonts.bold,
+    fontSize: 20,
+    fontVariant: ['tabular-nums'],
+  },
+  petShopStatLabel: {
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  petShopActionsRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
 
   modalOverlay: {
     flex: 1,

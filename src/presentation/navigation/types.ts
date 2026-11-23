@@ -1,5 +1,6 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
-import { Priority, RequestStatus, ServiceType } from '../../domain/models/request';
+import { OrderStatus } from '../../domain/models/order';
+import { Priority, RequestStatus, ServiceType, Species } from '../../domain/models/request';
 
 export type TabParamList = {
   Home: undefined;
@@ -10,7 +11,13 @@ export type TabParamList = {
         nonce?: number;
       }
     | undefined;
-  Calendar: undefined;
+  Orders:
+    | {
+        status?: OrderStatus | 'TODOS';
+        nonce?: number;
+      }
+    | undefined;
+  Catalog: undefined;
   Settings: undefined;
 };
 
@@ -18,8 +25,30 @@ export type RootStackParamList = {
   Welcome: undefined;
   Register: undefined;
   Main: NavigatorScreenParams<TabParamList> | undefined;
-  CreateRequest: { requestId?: string; service?: ServiceType; initialDate?: string } | undefined;
+  Calendar: undefined;
+  BreedGuide: undefined;
+  CreateRequest:
+    | {
+        requestId?: string;
+        service?: ServiceType;
+        initialDate?: string;
+        initialSpecies?: Species;
+        initialBreed?: string;
+      }
+    | undefined;
   RequestDetail: { requestId: string };
+  CreateOrder:
+    | {
+        orderId?: string;
+        initialProductId?: number;
+        initialQuantity?: number;
+        initialClientName?: string;
+        initialPhone?: string;
+        initialPetName?: string;
+        initialSpecies?: Species;
+      }
+    | undefined;
+  OrderDetail: { orderId: string };
 };
 
 declare global {

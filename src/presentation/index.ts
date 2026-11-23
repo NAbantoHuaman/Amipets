@@ -5,7 +5,6 @@ export * from './screens';
 export * from './store';
 export * from './theme';
 export * from './utils/date';
-export * from './utils/id';
 export * from './utils/requestMeta';
 export * from './utils/requests';
 export * from './utils/validation';

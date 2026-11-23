@@ -1,1 +1,0 @@
-export { PriorityChip } from './Chips';

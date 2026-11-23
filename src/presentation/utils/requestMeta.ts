@@ -85,8 +85,8 @@ export const SERVICE_META: Record<ServiceType, VisualMeta & { hint: string }> = 
 };
 
 export const SPECIES_META: Record<Species, { label: string; icon: SpeciesIconName; color: string; background: string }> = {
-  PERRO: { label: 'Perro', icon: 'dog', color: colors.primaryDark, background: colors.primarySoft },
+  PERRO: { label: 'Perro', icon: 'dog', color: colors.accent, background: colors.accentSoft },
   GATO: { label: 'Gato', icon: 'cat', color: colors.lavender, background: colors.lavenderSoft },
-  CONEJO: { label: 'Conejo', icon: 'rabbit', color: '#D97706', background: '#FEF3C7' },
+  CONEJO: { label: 'Conejo', icon: 'rabbit', color: colors.pending, background: colors.pendingSoft },
   OTRO: { label: 'Otro', icon: 'paw', color: colors.textSecondary, background: colors.track },
 };

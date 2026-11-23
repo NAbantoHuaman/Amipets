@@ -3,6 +3,7 @@ export type UserRole = 'ADMIN' | 'VETERINARIAN' | 'RECEPTIONIST' | 'ASSISTANT';
 export interface User {
   id: string;
   userName: string;
+  email?: string;
   password?: string;
   displayName: string;
   role: UserRole;
@@ -15,6 +16,8 @@ export interface User {
 }
 
 export interface Session {
+  uid: string;
+  email: string;
   userName: string;
   displayName: string;
   title: string;
@@ -26,7 +29,8 @@ export interface Session {
 }
 
 export interface RegisterUserInput {
-  userName: string;
+  email: string;
+  userName?: string;
   password: string;
   displayName: string;
   role?: UserRole;

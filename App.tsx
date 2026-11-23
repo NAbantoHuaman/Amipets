@@ -13,6 +13,8 @@ import { Caveat_600SemiBold } from '@expo-google-fonts/caveat';
 
 import { AuthProvider } from './src/presentation/context/AuthContext';
 import { RequestsProvider } from './src/presentation/context/RequestsProvider';
+import { OrdersProvider } from './src/presentation/context/OrdersContext';
+import { CatalogProvider } from './src/presentation/context/CatalogContext';
 import { ToastProvider } from './src/presentation/context/ToastContext';
 import { RootNavigator } from './src/presentation/navigation/RootNavigator';
 import { colors } from './src/presentation/theme';
@@ -36,14 +38,18 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <RequestsProvider>
-          <ToastProvider>
-            <StatusBar style="dark" />
-            <RootNavigator />
-          </ToastProvider>
-        </RequestsProvider>
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <RequestsProvider>
+            <OrdersProvider>
+              <CatalogProvider>
+                <StatusBar style="dark" />
+                <RootNavigator />
+              </CatalogProvider>
+            </OrdersProvider>
+          </RequestsProvider>
+        </AuthProvider>
+      </ToastProvider>
     </SafeAreaProvider>
   );
 }

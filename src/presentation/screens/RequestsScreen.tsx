@@ -110,24 +110,36 @@ export function RequestsScreen({ navigation, route }: Props) {
       <View style={styles.container}>
         <FadeInView delay={30} distance={8}>
           <View style={styles.header}>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.headerSubtitle}>Admisión y Triaje</Text>
               <Text style={typography.title} accessibilityRole="header">
                 Solicitudes
               </Text>
             </View>
-            <PressableScale
-              onPress={openCreate}
-              style={styles.addButton}
-              accessibilityRole="button"
-              accessibilityLabel="Nueva solicitud"
-              testID="requests-add"
-            >
-              <View style={styles.addIcon}>
-                <Ionicons name="add" size={16} color={colors.primary} />
-              </View>
-              <Text style={styles.addLabel}>Nueva</Text>
-            </PressableScale>
+            <View style={styles.headerActions}>
+              <PressableScale
+                onPress={() => navigation.navigate('Calendar')}
+                style={styles.calendarPill}
+                accessibilityRole="button"
+                accessibilityLabel="Abrir calendario clínico"
+                testID="requests-calendar"
+              >
+                <Ionicons name="calendar-outline" size={16} color={colors.primaryDark} />
+                <Text style={styles.calendarPillText}>Agenda</Text>
+              </PressableScale>
+              <PressableScale
+                onPress={openCreate}
+                style={styles.addButton}
+                accessibilityRole="button"
+                accessibilityLabel="Nueva solicitud"
+                testID="requests-add"
+              >
+                <View style={styles.addIcon}>
+                  <Ionicons name="add" size={16} color={colors.primary} />
+                </View>
+                <Text style={styles.addLabel}>Nueva</Text>
+              </PressableScale>
+            </View>
           </View>
         </FadeInView>
 
@@ -200,8 +212,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: spacing.xs,
     paddingTop: spacing.xs,
     marginBottom: spacing.md,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  calendarPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+  },
+  calendarPillText: {
+    fontFamily: fonts.semibold,
+    fontSize: 12.5,
+    color: colors.primaryDark,
   },
   headerSubtitle: {
     fontFamily: fonts.medium,

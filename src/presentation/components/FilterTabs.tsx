@@ -55,6 +55,45 @@ export function FilterTabs<T extends string>({ options, value, onChange, variant
     );
   }
 
+  if (options.length > 4) {
+    return (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabsScroll}
+        contentContainerStyle={styles.tabsScrollContent}
+        accessibilityRole="tablist"
+        accessibilityLabel={accessibilityLabel}
+      >
+        {options.map((opt) => {
+          const active = opt.value === value;
+          return (
+            <Pressable
+              key={opt.value}
+              onPress={() => onChange(opt.value)}
+              style={styles.tabScrollItem}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={`${opt.label}${opt.count !== undefined ? `, ${opt.count}` : ''}`}
+            >
+              <View style={styles.tabInner}>
+                <Text style={[styles.tabLabel, active && styles.tabLabelActive]} numberOfLines={1}>
+                  {opt.label}
+                </Text>
+                {opt.count !== undefined && (
+                  <View style={[styles.count, active && styles.countActive]}>
+                    <Text style={[styles.countText, active && styles.countTextActive]}>{opt.count}</Text>
+                  </View>
+                )}
+              </View>
+              <View style={[styles.indicator, active && styles.indicatorActive, styles.indicatorWide]} />
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    );
+  }
+
   return (
     <View style={styles.tabs} accessibilityRole="tablist" accessibilityLabel={accessibilityLabel}>
       {options.map((opt) => {
@@ -88,6 +127,9 @@ export function FilterTabs<T extends string>({ options, value, onChange, variant
 
 const styles = StyleSheet.create({
   tabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border },
+  tabsScroll: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  tabsScrollContent: { gap: spacing.xs, paddingRight: spacing.sm },
+  tabScrollItem: { alignItems: 'center', paddingTop: spacing.xs, paddingHorizontal: spacing.xs },
   tab: { flex: 1, alignItems: 'center', paddingTop: spacing.xs },
   tabInner: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingBottom: spacing.xs },
   tabLabel: { fontFamily: fonts.medium, fontSize: 13, color: colors.textMuted },
@@ -97,6 +139,7 @@ const styles = StyleSheet.create({
   countText: { fontFamily: fonts.semibold, fontSize: 10, color: colors.textMuted },
   countTextActive: { color: colors.primaryDark },
   indicator: { height: 2.5, width: '60%', borderRadius: 2, backgroundColor: 'transparent', marginBottom: -1 },
+  indicatorWide: { width: '100%' },
   indicatorActive: { backgroundColor: colors.primary },
 
   chipsRow: { gap: 6, paddingVertical: 2 },

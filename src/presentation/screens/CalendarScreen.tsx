@@ -9,21 +9,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { CompositeScreenProps } from '@react-navigation/native';
-import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { EmptyState, FadeInView, PetAvatar, PressableScale, PriorityChip, PulseView, StatusChip } from '../components';
+import { EmptyState, FadeInView, IconButton, PetAvatar, PressableScale, PriorityChip, PulseView, StatusChip } from '../components';
 import { useRequests } from '../context/RequestsContext';
-import { TabParamList, RootStackParamList } from '../navigation/types';
+import { RootStackParamList } from '../navigation/types';
 import { colors, common, fonts, radius, shadows, spacing, typography } from '../theme';
 import { formatLongToday, formatTime, isSameDay } from '../utils/date';
 import { SERVICE_META } from '../utils/requestMeta';
 import { sortByAttentionOrder } from '../utils/requests';
 
-type Props = CompositeScreenProps<
-  BottomTabScreenProps<TabParamList, 'Calendar'>,
-  NativeStackScreenProps<RootStackParamList>
->;
+type Props = NativeStackScreenProps<RootStackParamList, 'Calendar'>;
 
 interface WeekDayInfo {
   key: string;
@@ -105,11 +100,19 @@ export function CalendarScreen({ navigation }: Props) {
 
         <FadeInView delay={40} distance={10}>
           <View style={styles.headerRow}>
-            <View>
-              <Text style={styles.subtitle}>Agenda de Atenciones</Text>
-              <Text style={typography.title} accessibilityRole="header">
-                Calendario Clínico
-              </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 }}>
+              <IconButton
+                icon="arrow-back"
+                onPress={() => navigation.goBack()}
+                accessibilityLabel="Volver"
+                size={40}
+              />
+              <View>
+                <Text style={styles.subtitle}>Agenda de Atenciones</Text>
+                <Text style={typography.title} accessibilityRole="header">
+                  Calendario Clínico
+                </Text>
+              </View>
             </View>
             <PressableScale
               onPress={openCreateForSelectedDay}
@@ -416,7 +419,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: '#FFD5D1',
+    borderColor: colors.primaryBorder,
     gap: 4,
   },
   shiftFooterRow: {
@@ -434,7 +437,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: '#FFD5D1',
+    borderColor: colors.primaryBorder,
   },
   toggleAllText: {
     fontFamily: fonts.semibold,

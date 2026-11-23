@@ -12,6 +12,7 @@ interface Props {
   color?: string;
   background?: string;
   size?: number;
+  disabled?: boolean;
 
   badge?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -25,6 +26,7 @@ export function IconButton({
   color = colors.text,
   background = colors.surface,
   size = 44,
+  disabled,
   badge,
   style,
   testID,
@@ -33,6 +35,7 @@ export function IconButton({
     <PressableScale
       testID={testID}
       onPress={onPress}
+      disabled={disabled}
       hitSlop={HIT_SLOP}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}

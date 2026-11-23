@@ -1,4 +1,13 @@
-import React, { ReactNode, useCallback, useEffect, useMemo, useReducer, useState } from 'react';
+import React, {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
+import { generateId } from '../../application/utils/id';
 import {
   RequestChanges,
   RequestInput,
@@ -11,7 +20,6 @@ import { requestRepository } from '../../infrastructure/repositories/InMemoryReq
 import { actions } from '../store/actions';
 import { initialState } from '../store/initialState';
 import { requestsReducer } from '../store/requestsReducer';
-import { generateId } from '../utils/id';
 import { normalizePhone } from '../utils/validation';
 import { RequestsContext, RequestsContextValue } from './RequestsContext';
 
@@ -19,6 +27,7 @@ function sanitize<T extends Partial<RequestInput>>(input: T): T {
   const out = { ...input };
   if (out.clienteNombre !== undefined) out.clienteNombre = out.clienteNombre.trim().replace(/\s+/g, ' ');
   if (out.mascotaNombre !== undefined) out.mascotaNombre = out.mascotaNombre.trim().replace(/\s+/g, ' ');
+  if (out.raza !== undefined) out.raza = out.raza.trim().replace(/\s+/g, ' ') || undefined;
   if (out.descripcion !== undefined) out.descripcion = out.descripcion.trim();
   if (out.telefono !== undefined) {
     const digits = normalizePhone(out.telefono);
@@ -31,16 +40,31 @@ function sanitize<T extends Partial<RequestInput>>(input: T): T {
 }
 
 export function RequestsProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(requestsReducer, initialState, (init) => ({
-    ...init,
-    requests: requestRepository.getAllSync(),
-  }));
+  const [state, dispatch] = useReducer(requestsReducer, initialState);
   const [servicePrices, setServicePrices] = useState<ServicePrices>(() =>
-    requestRepository.getServicePrices()
+    requestRepository.getServicePrices(),
   );
+  const hydratedRef = useRef(false);
 
   useEffect(() => {
-    requestRepository.saveAllSync(state.requests);
+    let active = true;
+    Promise.all([
+      requestRepository.loadPersistedRequests(),
+      requestRepository.loadPersistedServicePrices(),
+    ]).then(([savedRequests, savedPrices]) => {
+      if (!active) return;
+      hydratedRef.current = true;
+      dispatch(actions.load(savedRequests));
+      setServicePrices(savedPrices);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    void requestRepository.saveRequestsAsync(state.requests);
   }, [state.requests]);
 
   const getRequestById = useCallback(
@@ -75,6 +99,7 @@ export function RequestsProvider({ children }: { children: ReactNode }) {
   const updateServicePrice = useCallback((service: ServiceType, price: number) => {
     const next = requestRepository.updateServicePrice(service, price);
     setServicePrices(next);
+    void requestRepository.saveServicePricesAsync(next);
   }, []);
 
   const value = useMemo<RequestsContextValue>(

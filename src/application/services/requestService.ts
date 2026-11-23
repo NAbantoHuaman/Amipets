@@ -62,6 +62,7 @@ export function filterRequests(
     return (
       cleanString(r.mascotaNombre).includes(q) ||
       cleanString(r.clienteNombre).includes(q) ||
+      (r.raza ? cleanString(r.raza).includes(q) : false) ||
       (qPhone.length > 0 && normalizePhone(r.telefono).includes(qPhone))
     );
   });

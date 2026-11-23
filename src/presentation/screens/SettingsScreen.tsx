@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -23,6 +24,7 @@ import {
   SectionHeader,
 } from '../components';
 import { useAuth } from '../context/AuthContext';
+import { useOrders } from '../context/OrdersContext';
 import { useRequests } from '../context/RequestsContext';
 import { useToast } from '../context/ToastContext';
 import { ServiceType, Species } from '../../domain/models/request';
@@ -49,10 +51,12 @@ const SERVICE_PRICE_METADATA: Omit<ServicePriceItem, 'price'>[] = [
 export function SettingsScreen() {
   const { session, isAdmin, staffList, signOut } = useAuth();
   const { requests, servicePrices, updateServicePrice, clearAll } = useRequests();
+  const { orders, isOnline, syncing, pendingSyncCount, syncNow, clearAllOrders } = useOrders();
   const { showToast } = useToast();
 
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [confirmClearOrders, setConfirmClearOrders] = useState(false);
 
   const servicesList = useMemo<ServicePriceItem[]>(
     () =>
@@ -69,6 +73,37 @@ export function SettingsScreen() {
   const [soundAlerts, setSoundAlerts] = useState(true);
   const [vaccineReminders, setVaccineReminders] = useState(true);
 
+  useEffect(() => {
+    let active = true;
+    AsyncStorage.getItem('amipets_settings_prefs_v1')
+      .then((raw) => {
+        if (!active || !raw) return;
+        const parsed = JSON.parse(raw);
+        if (typeof parsed.notifyUrgent === 'boolean') setNotifyUrgent(parsed.notifyUrgent);
+        if (typeof parsed.soundAlerts === 'boolean') setSoundAlerts(parsed.soundAlerts);
+        if (typeof parsed.vaccineReminders === 'boolean') setVaccineReminders(parsed.vaccineReminders);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const updatePref = (
+    key: 'notifyUrgent' | 'soundAlerts' | 'vaccineReminders',
+    value: boolean,
+  ) => {
+    const next = {
+      notifyUrgent: key === 'notifyUrgent' ? value : notifyUrgent,
+      soundAlerts: key === 'soundAlerts' ? value : soundAlerts,
+      vaccineReminders: key === 'vaccineReminders' ? value : vaccineReminders,
+    };
+    if (key === 'notifyUrgent') setNotifyUrgent(value);
+    if (key === 'soundAlerts') setSoundAlerts(value);
+    if (key === 'vaccineReminders') setVaccineReminders(value);
+    void AsyncStorage.setItem('amipets_settings_prefs_v1', JSON.stringify(next)).catch(() => {});
+  };
+
   const handleLogout = () => {
     setConfirmLogout(false);
     signOut();
@@ -78,6 +113,12 @@ export function SettingsScreen() {
     clearAll();
     setConfirmClear(false);
     showToast('info', 'Registros vaciados', 'Se eliminaron todas las solicitudes de atención.');
+  };
+
+  const handleClearAllOrders = async () => {
+    await clearAllOrders();
+    setConfirmClearOrders(false);
+    showToast('info', 'Pedidos eliminados', 'Se vaciaron todos los pedidos guardados.');
   };
 
   const handleOpenEditPrice = (item: ServicePriceItem) => {
@@ -132,7 +173,7 @@ export function SettingsScreen() {
       >
         <FadeInView delay={30} distance={10}>
           <Text style={styles.screenTitle} accessibilityRole="header">
-            Ajustes de Clínica
+            Ajustes
           </Text>
 
           <View style={styles.profileCard}>
@@ -141,9 +182,11 @@ export function SettingsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.doctorName}>{doctorFullName}</Text>
-              <Text style={styles.clinicName}>{session?.clinicName ?? 'Clínica Veterinaria Amipets'}</Text>
+              <Text style={styles.clinicName}>
+                {session?.email || session?.clinicName || 'Clínica Veterinaria Amipets'}
+              </Text>
               <Text style={styles.cmpvText}>
-                {session?.cmpv ?? 'C.M.V.P. 8421 · Cirugía & Traumatología'}
+                {session?.cmpv ?? 'Recepción & Ventas'}
               </Text>
               <View style={styles.roleBadge}>
                 <PulseView minScale={0.8} maxScale={1.25} duration={1200}>
@@ -162,11 +205,17 @@ export function SettingsScreen() {
               {staffList.map((member, idx) => {
                 const isCurrent = session?.userName.toLowerCase() === member.userName.toLowerCase();
                 const isMemberAdmin = member.role === 'ADMIN' || member.userName === 'admin';
-                const memberCount = requests.filter(
+                const memberRequests = requests.filter(
                   (r) =>
                     (r.registradoPorUsuario && r.registradoPorUsuario.toLowerCase() === member.userName.toLowerCase()) ||
                     (!r.registradoPorUsuario && isMemberAdmin)
                 ).length;
+                const memberOrders = orders.filter(
+                  (o) =>
+                    (o.registradoPorUsuario && o.registradoPorUsuario.toLowerCase() === member.userName.toLowerCase()) ||
+                    (!o.registradoPorUsuario && isMemberAdmin)
+                ).length;
+                const memberCount = memberRequests + memberOrders;
 
                 return (
                   <React.Fragment key={member.id}>
@@ -313,7 +362,7 @@ export function SettingsScreen() {
                 </View>
                 <Switch
                   value={notifyUrgent}
-                  onValueChange={setNotifyUrgent}
+                  onValueChange={(v) => updatePref('notifyUrgent', v)}
                   trackColor={{ false: colors.border, true: colors.primary }}
                   thumbColor={colors.white}
                 />
@@ -328,7 +377,7 @@ export function SettingsScreen() {
                 </View>
                 <Switch
                   value={soundAlerts}
-                  onValueChange={setSoundAlerts}
+                  onValueChange={(v) => updatePref('soundAlerts', v)}
                   trackColor={{ false: colors.border, true: colors.primary }}
                   thumbColor={colors.white}
                 />
@@ -343,7 +392,7 @@ export function SettingsScreen() {
                 </View>
                 <Switch
                   value={vaccineReminders}
-                  onValueChange={setVaccineReminders}
+                  onValueChange={(v) => updatePref('vaccineReminders', v)}
                   trackColor={{ false: colors.border, true: colors.primary }}
                   thumbColor={colors.white}
                 />
@@ -353,17 +402,69 @@ export function SettingsScreen() {
         </FadeInView>
 
         <FadeInView delay={270} distance={10}>
+          <View style={styles.section}>
+            <SectionHeader title="Datos del dispositivo" />
+            <View style={styles.card}>
+              <View style={styles.infoRowItem}>
+                <IconTile icon="folder-outline" color={colors.sage} background={colors.sageSoft} size={38} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.infoRowTitle}>Pedidos guardados</Text>
+                  <Text style={styles.infoRowSubtitle}>
+                    {!isOnline
+                      ? 'Sin conexión · Guardados en el dispositivo'
+                      : pendingSyncCount > 0
+                      ? `${pendingSyncCount} ${
+                          pendingSyncCount === 1 ? 'pendiente de envío' : 'pendientes de envío'
+                        }`
+                      : 'Todos los pedidos sincronizados'}
+                  </Text>
+                </View>
+                <View style={styles.pricePill}>
+                  <Text style={styles.serviceRowPrice}>{orders.length}</Text>
+                </View>
+              </View>
+
+              {isOnline && (
+                <>
+                  <View style={styles.cardDivider} />
+                  <View style={{ paddingTop: spacing.xs }}>
+                    <PrimaryButton
+                      title={syncing ? 'Sincronizando...' : 'Sincronizar ahora'}
+                      onPress={() => syncNow(false)}
+                      loading={syncing}
+                      variant="secondary"
+                      icon="sync-outline"
+                      trailingIcon={null}
+                      compact
+                    />
+                  </View>
+                </>
+              )}
+            </View>
+          </View>
+
           <View style={{ gap: spacing.sm, marginTop: spacing.xs }}>
             {isAdmin && (
-              <PressableScale
-                onPress={() => setConfirmClear(true)}
-                style={styles.clearButton}
-                accessibilityRole="button"
-                accessibilityLabel="Vaciar registros de solicitudes"
-              >
-                <Ionicons name="trash-outline" size={16} color={colors.danger} />
-                <Text style={styles.clearButtonText}>Vaciar todas las solicitudes</Text>
-              </PressableScale>
+              <>
+                <PressableScale
+                  onPress={() => setConfirmClear(true)}
+                  style={styles.clearButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Vaciar registros de solicitudes"
+                >
+                  <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                  <Text style={styles.clearButtonText}>Vaciar todas las solicitudes</Text>
+                </PressableScale>
+                <PressableScale
+                  onPress={() => setConfirmClearOrders(true)}
+                  style={styles.clearButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Vaciar pedidos de tienda"
+                >
+                  <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                  <Text style={styles.clearButtonText}>Vaciar pedidos de tienda</Text>
+                </PressableScale>
+              </>
             )}
 
             <PrimaryButton
@@ -377,7 +478,7 @@ export function SettingsScreen() {
           </View>
 
           <Text style={styles.versionFootnote}>
-            Amipets · Sistema de Gestión Clínica v1.0
+            Amipets · v1.0
           </Text>
         </FadeInView>
       </ScrollView>
@@ -454,6 +555,18 @@ export function SettingsScreen() {
       />
 
       <ConfirmDialog
+        visible={confirmClearOrders}
+        title="¿Vaciar todos los pedidos?"
+        message="Se eliminarán todos los pedidos guardados. Esta acción no se puede deshacer."
+        confirmLabel="Sí, vaciar pedidos"
+        cancelLabel="Cancelar"
+        destructive
+        icon="trash"
+        onCancel={() => setConfirmClearOrders(false)}
+        onConfirm={handleClearAllOrders}
+      />
+
+      <ConfirmDialog
         visible={confirmLogout}
         title="¿Cerrar sesión?"
         message="Regresarás a la pantalla de bienvenida del consultorio."
@@ -489,7 +602,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     backgroundColor: colors.primarySoft,
     borderWidth: 1,
-    borderColor: '#FFD5D1',
+    borderColor: colors.primaryBorder,
     ...shadows.soft,
   },
   avatarWrap: {

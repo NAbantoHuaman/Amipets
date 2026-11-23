@@ -177,7 +177,8 @@ export function RequestDetailScreen({ navigation, route }: Props) {
                   </View>
                 </View>
                 <Text style={styles.petSpeciesSubtitle}>
-                  {species?.label ?? 'Mascota'} · Registrado {formatRelative(request.fechaRegistro)}
+                  {species?.label ?? 'Mascota'}
+                  {request.raza ? ` · ${request.raza}` : ''} · Registrado {formatRelative(request.fechaRegistro)}
                 </Text>
               </View>
             </View>

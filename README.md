@@ -1,281 +1,294 @@
-# Amipets 🐾 — Sistema de Gestión de Solicitudes de Atención Veterinaria
+# Amipets — Clínica Veterinaria y Pet Shop
 
-> Aplicación móvil profesional desarrollada en **React Native** con TypeScript bajo principios de **Clean Architecture** para la gestión, priorización, triaje y seguimiento del ciclo de vida de atenciones en la clínica veterinaria Amipets.
+## Descripción del Proyecto
+
+**Amipets** es una aplicación móvil desarrollada en **React Native** con **Expo (SDK 58)**, **TypeScript**, **SQLite (`expo-sqlite`)**, **Firebase** y **APIs REST externas** bajo **Clean Architecture** en 4 capas. Está orientada a emprendimientos veterinarios y tiendas de mascotas que necesitan gestionar solicitudes clínicas y controlar pedidos de tienda con funcionamiento completo sin conexión a internet y sincronización automática en la nube.
+
+### Contexto y Problemática
+Amipets opera simultáneamente como clínica veterinaria y tienda de mascotas (alimentos, accesorios, ropa y juguetes para perros y gatos). Anteriormente, los pedidos y atenciones se anotaban de forma manual por WhatsApp y hojas de cálculo, ocasionando duplicidad de registros, errores de cálculo, desorden en el historial por operador y bloqueos cuando no había cobertura móvil.
+
+Con la aplicación móvil, el equipo autenticado trabaja siempre sobre una interfaz unificada:
+- Los pedidos se almacenan primero en **SQLite (`amipets_store.db`)**, sobreviven al cierre o reinicio del teléfono sin internet y se sincronizan automáticamente con **Cloud Firestore** sin generar duplicados apenas regresa la conexión.
+- El catálogo, el clima para paseos y la guía de razas consumen **servicios REST externos reales** con manejo explícito de carga, error, reintento y respaldo local.
 
 ---
 
-## 👥 Datos del Proyecto y Equipo de Desarrollo
+## Integrantes del Equipo
 
 - **Institución:** Escuela de Tecnología — IDAT
-- **Curso:** Desarrollo de Aplicaciones Móviles
-- **Integrantes:**
-  1. **Nestor Jose Abanto Huaman** — Arquitectura Limpia en 4 Capas, Modelado de Dominio y Estado Global (`src/domain/`, `src/application/`, `src/infrastructure/`)
+- **Proyecto:** Aplicativo Móvil para Clínica Veterinaria y Pet Shop (**Amipets**)
+- **Equipo de Desarrollo:**
+  1. **Nestor Jose Abanto Huaman** — Arquitectura Limpia en 4 Capas, Modelado de Dominio, SQLite, Firebase, Sincronización Offline/Online e Integraciones REST (`src/domain/`, `src/application/`, `src/infrastructure/`)
   2. **Elmo Torres Ordoñez** — Diseño UI/UX, Sistema de Diseño, Tokens y Componentes Reutilizables (`src/presentation/components/`, `src/presentation/theme/`)
-  3. **Joel Yaro Leguia** — Pantallas Asistenciales, Alta de Recepcionistas, Agenda Compartida y Flujo CRUD (`src/presentation/screens/`, `src/presentation/navigation/`, `src/presentation/utils/`)
+  3. **Joel Yaro Leguia** — Pantallas Asistenciales y Tienda, Navegación, Flujo CRUD y Consumo REST en UI (`src/presentation/screens/`, `src/presentation/navigation/`, `src/presentation/utils/`)
 
 ---
 
-## 📋 Contexto y Problemática
+## Requisitos del Entorno
 
-Una clínica veterinaria que brinda servicios de **consultas, vacunación, emergencias y grooming** registraba diariamente sus solicitudes mediante canales informales (WhatsApp, llamadas telefónicas y cuadernos de papel). Esta práctica generaba:
-1. **Pérdida de información** de los pacientes y tutores.
-2. **Duplicidad de registros** entre recepcionistas y médicos.
-3. **Falta de visibilidad sobre el estado de cada atención** (`PENDIENTE`, `EN_ATENCION`, `FINALIZADO`).
-4. **Falta de priorización médica** para urgencias vitales que requieren atención inmediata frente a servicios programados.
-5. **Falta de trazabilidad:** Imposibilidad de auditar qué recepcionista o médico registró cada solicitud.
-
-### Solución Implementada: **Amipets**
-Una aplicación móvil desacoplada, moderna y reactiva que centraliza el registro, seguimiento y ciclo de vida de cada solicitud de atención, optimizando la toma de decisiones clínicas con las siguientes características:
-- **Clean Architecture en 4 Capas** (`domain/`, `application/`, `infrastructure/`, `presentation/`).
-- **Sistema multi-usuario compartido:** Con registro especializado de recepcionistas por turnos y auditoría de registro (`registradoPor`).
-- **Paleta Coral Profesional** con cumplimiento de accesibilidad **WCAG AA**.
-- **Sistema Integral de Animaciones Nativas** (`FadeInView`, `PulseView`, `PressableScale`).
-- **Tarifario Oficial Dinámico** en soles (S/.) con control de permisos para el Director Médico.
+- **Sistema Operativo:** Windows 10/11, macOS o Linux
+- **Node.js:** Versión 20.x o superior
+- **Gestor de paquetes:** `npm` (incluido con Node.js)
+- **Control de versiones:** Git
+- **Ejecución móvil:**
+  - Android Studio con emulador Android, o dispositivo físico Android con **Expo Go** / `.apk` compilado
+- **Cuentas en la nube (opcional para despliegue propio o build remoto):**
+  - Cuenta en **Firebase** (proyecto vinculado: `amipets-d469c`)
+  - Cuenta en **Expo (EAS)** para compilación remota de `.apk` / `.aab`
 
 ---
 
-## 🛠️ Stack Tecnológico
+## Configuración del Entorno y Credenciales de Firebase (Variables de Entorno)
 
-- **Framework:** [React Native](https://reactnative.dev/) (v0.76+) con [Expo](https://expo.dev/) (SDK 52)
-- **Lenguaje:** [TypeScript](https://www.typescriptlang.org/) (Tipado estricto, interfaces de dominio y DTOs)
-- **Navegación:** [@react-navigation/native](https://reactnavigation.org/) con `@react-navigation/native-stack` y `@react-navigation/bottom-tabs`
-- **Iconografía:** [@expo/vector-icons](https://icons.expo.fyi/) (`Ionicons`, `MaterialCommunityIcons`)
-- **Tipografía:** [Poppins](https://fonts.google.com/specimen/Poppins) (`400`, `500`, `600`, `700`) + [Caveat](https://fonts.google.com/specimen/Caveat) (`600`)
-- **Manejo de Safe Areas:** `react-native-safe-area-context`
-- **Arquitectura:** Clean Architecture (Domain Driven Design modular)
+La aplicación utiliza **Firebase Authentication**, **Cloud Firestore** y **Cloud Storage** mediante variables públicas de Expo (`EXPO_PUBLIC_*`). Por seguridad, el archivo `.env` local está excluido del repositorio en `.gitignore` y se distribuye únicamente la plantilla `.env.example`.
+
+### 1. Crear el archivo `.env` desde la plantilla
+En la raíz del proyecto, copia `.env.example` hacia `.env`:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Completa las 6 variables con los valores de tu Web App registrada en **Firebase Console -> Configuración del proyecto -> Tus apps**:
+
+```env
+EXPO_PUBLIC_FIREBASE_API_KEY=tu_api_key_de_firebase
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=tu_proyecto.firebaseapp.com
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=tu_project_id
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=tu_proyecto.firebasestorage.app
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=tu_messaging_sender_id
+EXPO_PUBLIC_FIREBASE_APP_ID=tu_app_id
+```
+
+| Variable | Propósito |
+|---|---|
+| `EXPO_PUBLIC_FIREBASE_API_KEY` | Clave pública de la Web App en Firebase |
+| `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN` | Dominio de autenticación de Firebase |
+| `EXPO_PUBLIC_FIREBASE_PROJECT_ID` | Identificador del proyecto Firebase (`amipets-d469c`) |
+| `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET` | Bucket de Cloud Storage para comprobantes de pedido |
+| `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Identificador del remitente de Firebase |
+| `EXPO_PUBLIC_FIREBASE_APP_ID` | Identificador de la aplicación registrada en Firebase |
+
+### 2. Credenciales para compilación remota en Expo (EAS)
+Expo EAS Build no sube archivos ignorados por Git (`.env`), por lo que los perfiles `development`, `preview` y `production` en `eas.json` ya declaran el bloque `"env"` con las variables `EXPO_PUBLIC_FIREBASE_*` necesarias para compilar en la nube (alternativamente pueden gestionarse como EAS Environment Variables desde `expo.dev`).
+
+### 3. Reglas y servicios de Firebase
+El repositorio incluye la configuración lista en `firebase.json`, `.firebaserc`, `firestore.rules`, `firestore.indexes.json` y `storage.rules`:
+- **Firebase Authentication:** proveedor `Email/Password` habilitado (`auth.providers.emailPassword: true`).
+- **Cloud Firestore:** reglas por propietario (`request.auth.uid == resource.data.userId`).
+- **Cloud Storage:** reglas por carpeta de usuario (`receipts/{userId}/...`, límite de imagen de 5 MB). Si deseas desplegar o actualizar reglas con Firebase CLI:
+
+```powershell
+npx.cmd -y firebase-tools@latest login
+npx.cmd -y firebase-tools@latest deploy --only firestore:rules,auth --project amipets-d469c
+npx.cmd -y firebase-tools@latest deploy --only storage --project amipets-d469c
+```
+
+### 4. APIs externas sin API key
+Las APIs externas integradas para catálogo (`dummyjson.com`), clima (`api.open-meteo.com`) y razas (`dogapi.dog`, `dog.ceo`, `catfact.ninja`) son públicas y no requieren credenciales ni claves adicionales en `.env`.
 
 ---
 
-## 🚀 Requisitos del Entorno
-
-Asegúrate de contar con las siguientes herramientas instaladas en tu equipo:
-
-- **Node.js:** Versión 18.x o 20.x LTS ([Descargar Node.js](https://nodejs.org/))
-- **Gestor de paquetes:** `npm` (incluido con Node.js) o `yarn`
-- **Git:** Para clonar el repositorio y control de versiones
-- **Para Android:**
-  - Android Studio con SDK Platform (API 33 o superior).
-  - Herramientas de compilación: Android SDK Build-Tools.
-  - JDK 17 (Java Development Kit).
-  - Variable de entorno `ANDROID_HOME` configurada y agregada al `PATH`.
-  - Emulador Android (AVD) o dispositivo físico con Depuración USB habilitada.
-- **Para iOS (exclusivo macOS):**
-  - Xcode 15 o superior con simulador configurado.
-  - CocoaPods (`sudo gem install cocoapods`).
-- **Alternativa Rápida (Cualquier plataforma / Dispositivo físico):**
-  - Aplicación **Expo Go** disponible en Google Play Store o Apple App Store.
-
----
-
-## 📦 Instalación
+## Pasos de Instalación
 
 1. **Clonar el repositorio:**
-   ```bash
+   ```powershell
    git clone https://github.com/NAbantoHuaman/Amipets.git
    cd Amipets
    ```
 
-2. **Instalar dependencias:**
-   ```bash
+2. **Instalar las dependencias del proyecto:**
+   ```powershell
    npm install
    ```
 
-3. **Verificar compilación TypeScript:**
-   ```bash
-   node .\node_modules\typescript\bin\tsc --noEmit
+3. **Configurar las variables de entorno:**
+   Crea `.env` a partir de `.env.example` siguiendo los pasos de la sección anterior.
+
+4. **Verificar compilación TypeScript:**
+   ```powershell
+   node ./node_modules/typescript/bin/tsc --noEmit
    ```
 
 ---
 
-## ▶️ Ejecución del Proyecto
+## Pasos de Ejecución
 
-### Opción A: Servidor Interactivo Expo (Recomendado)
-Inicia el empaquetador Metro:
-```bash
-npx expo start
-# o con npm:
-npm run start
-```
-- Presiona `a` para abrir en **Emulador Android**.
-- Presiona `i` para abrir en **Simulador iOS** (en macOS).
-- Presiona `w` para abrir en **Navegador Web**.
-- O escanea el **código QR** desde la aplicación **Expo Go** en tu smartphone (ambos dispositivos en la misma red WiFi).
+1. **Iniciar el servidor de desarrollo de Expo:**
+   ```powershell
+   npx expo start
+   ```
+   Opciones dentro de la consola interactiva:
+   - Presiona `a` para abrir la app en **emulador Android**.
+   - Presiona `w` para abrir la versión **Web** en el navegador.
+   - Escanea el código **QR** con **Expo Go** desde un teléfono Android conectado a la misma red.
 
-### Opción B: Ejecución directa en Android
-```bash
-npm run android
-```
-
-### Opción C: Ejecución directa en iOS (macOS)
-```bash
-npm run ios
-```
+2. **Verificar el bundle de producción Android localmente (sin compilar en la nube):**
+   ```powershell
+   npx.cmd expo export --platform android --output-dir .expo-verify-dist
+   ```
+   Esta comprobación empaqueta el código JavaScript/Hermes y los 84 assets locales usando `metro.config.js`. Tras verificar, puedes eliminar la carpeta `.expo-verify-dist`.
 
 ---
 
-## 🧪 Guía para Probar el Flujo Completo
+## Pasos para Generar el APK
 
-La aplicación cuenta con un flujo completo de punta a punta, persistencia local y soporte para múltiples cuentas de colaboradores:
+El proyecto ya cuenta con:
+- **`app.json`:** paquete Android `com.amipets.app`, ícono adaptativo (`#E6F3EF`), orientación `portrait`, modo claro (`userInterfaceStyle: "light"`) y plugins nativos (`expo-sqlite`, `expo-font`, `expo-image-picker` con `microphonePermission: false`).
+- **`eas.json`:** perfil `preview` configurado con `"buildType": "apk"` (instalación directa) y perfil `production` con `"buildType": "app-bundle"` (`.aab` para Google Play).
+- **`metro.config.js`:** soporte `.cjs` compatible con `firebase@^13.4.0` en builds nativos Android.
 
-### 1. Inicio de Sesión (WelcomeScreen)
-- La pantalla de bienvenida presenta el encabezado oficial de Amipets con su distintivo de estado clínico en vivo.
-- El banner de bienvenida se ubica en el centro entre la marca y el formulario de acceso.
-- **Acceso de Administrador / Director Médico:**
-  - **Usuario:** `admin`
-  - **Contraseña:** `admin`
-- Cuenta con validaciones reactivas en tiempo real y ocultamiento/visualización de contraseña.
+Ejecuta los siguientes comandos en la raíz del proyecto para compilar el `.apk`:
 
-### 2. Registro de Nuevas Recepcionistas (RegisterScreen)
-- En la pantalla de acceso, toca el botón **"Crear cuenta"** (botón Outlined con borde Coral).
-- Se abre el formulario de alta exclusiva de **Recepcionistas de la clínica**:
-  - **Nombre y Apellidos:** Nombre del colaborador (ej. `Mariana Ruiz`).
-  - **Turno Asignado:** Selección entre *Turno Mañana (08:00 - 14:00)*, *Turno Tarde (14:00 - 20:00)* o *Turno Completo (08:00 - 20:00)*.
-  - **Usuario y Contraseña:** Credenciales personales con confirmación de clave y validaciones de seguridad.
-- Al presionar **"Crear cuenta"**, la recepcionista queda registrada en el sistema clínico compartido, inicia sesión automáticamente y su nombre aparecerá en todas las solicitudes que ingrese.
+1. **Iniciar sesión en tu cuenta de Expo:**
+   ```powershell
+   npx.cmd -y eas-cli login
+   ```
 
-### 3. Panel Principal / Dashboard (HomeScreen)
-- **Saludo Clínico:** Encabezado con respiración visual que muestra la fecha del día y el nombre del profesional en sesión.
-- **Hero Banner:** Muestra el contador de atenciones del día con una micro-animación de pulso (*PulseView*) y acceso directo a nueva solicitud.
-- **Tarjetas de Estado:** Contadores en negrita de alto contraste (`#18181B`, 24px) para solicitudes *Pendientes*, *En atención* y *Finalizadas*.
-- **Servicios Asistenciales:** Grilla con los 4 servicios clínicos (*Consulta*, *Vacunación*, *Emergencia*, *Grooming*), tarifa oficial en soles y etiquetas de atenciones activas ancladas a la esquina superior derecha.
-- **Alerta de Emergencias Activas:** Si existe un paciente en estado Urgente no finalizado, se despliega una tarjeta de alerta con botón directo para atender el caso.
+2. **Vincular el proyecto con Expo EAS (solo la primera vez):**
+   ```powershell
+   npx.cmd -y eas-cli init
+   ```
 
-### 4. Nueva Solicitud y Admisión de Pacientes (CreateRequestScreen)
-- Accesible mediante el botón **(+)** del banner, en el listado o en el calendario.
-- Formulario dividido en secciones asistenciales con animación escalonada:
-  - **Datos del Cliente:** Nombre del tutor y teléfono de contacto con validación de formato.
-  - **Mascota y Selector de Especie:** Selección entre *Perro*, *Gato*, *Conejo* u *Otro*. Las especies no seleccionadas permanecen en tono neutro limpio, y la especie activa resalta en Coral con su insignia de verificación (✓).
-  - **Servicio Solicitado:** Botones táctiles con tarifa actualizada en soles. Seleccionar *Emergencia* eleva la prioridad automáticamente a *Urgente* y activa la insignia *Prioridad UCI*.
-  - **Triage y Nivel de Prioridad:** Barra segmentada (*Urgente*, *Alta*, *Media*, *Baja*) con indicador del impacto clínico del tiempo de espera.
-  - **Motivo de Atención:** Campo de texto multilínea con contador de caracteres.
-  - **Auditoría de Registro:** Muestra la fecha/hora de ingreso (ISO 8601), el nombre del recepcionista o médico que ingresa la solicitud (`registradoPor`) y la tarifa calculada.
+3. **Generar el archivo `.apk` instalable en Android:**
+   ```powershell
+   npx.cmd -y eas-cli build -p android --profile preview
+   ```
+   Al finalizar el proceso en la nube de EAS, la terminal mostrará la URL de descarga directa y un código QR para instalar el `.apk` en cualquier dispositivo Android.
 
-### 5. Directorio y Triaje de Solicitudes (RequestsScreen)
-- Listado general de pacientes ordenados por **prioridad clínica médica y hora de llegada**.
-- **Buscador en tiempo real:** Búsqueda rápida por nombre de paciente, cliente o teléfono.
-- **Filtros por Estado y Prioridad:** Chips interactivos para filtrar rápidamente por *Pendientes*, *En atención*, *Finalizadas* o por nivel de triage.
-- **Estado Vacío Centrado:** Cuando no hay solicitudes o no hay coincidencias de búsqueda, el estado vacío se ubica exactamente en el centro vertical de la pantalla.
-- **Entrada en Cascada:** Cada tarjeta de solicitud aparece con una suave animación escalonada.
-
-### 6. Ficha Clínica Integral y Ciclo de Vida (RequestDetailScreen)
-- Tarjeta hero del paciente con avatar de especie, código correlativo (`#AP-XXXX`), tutor y chips de estado.
-- **Cambio de Estado con Deshacer:**
-  - Permite avanzar la atención a *Pendiente*, *En atención* o *Finalizado*.
-  - Al cambiar de estado, se emite un Toast interactivo con botón **"Deshacer"** durante 5 segundos para revertir cualquier cambio accidental.
-- **Edición Completa:** Botón superior para editar cualquier dato del paciente o motivo de atención.
-- **Eliminación Segura:** Sección de baja con diálogo modal de confirmación destructiva (`ConfirmDialog`).
-
-### 7. Agenda Médica Compartida (CalendarScreen)
-- Vista semanal con selector de días táctil y espacioso (`minWidth: 42`, `minHeight: 66`), donde el día seleccionado se resalta con cápsula Coral y sombra suave.
-- **Sistema Clínico Compartido:** Muestra todas las atenciones programadas y atendidas por cualquier miembro del equipo de recepción o dirección médica.
-- Cronograma ordenado cronológicamente por hora y prioridad, con indicador de turno en vivo y distinción de emergencias con barra lateral roja.
-- Tocar cualquier cita abre de inmediato su ficha clínica de detalle.
-
-### 8. Ajustes, Tarifario Oficial y Equipo Clínico (SettingsScreen)
-- **Perfil Profesional:** Muestra los datos del Director Médico (o recepcionista activo) con indicador de conexión en vivo (*online dot*).
-- **Equipo Clínico:** Lista a todos los colaboradores registrados en el sistema, su cargo, estado activo y el número total de atenciones ingresadas por cada uno.
-- **Tarifario de Servicios Oficial:** Precios de los 4 servicios clínicos. Si la sesión es de Administrador (`admin`), permite editar el precio de cada servicio mediante un modal interactivo; si es recepcionista, muestra permisos de solo lectura.
-- **Preferencias del Sistema:** Switches interactivos para notificaciones de urgencias en tiempo real, sonido de alerta y recordatorios de vacunas.
-- **Mantenimiento y Sesión:** Opción para vaciar la base de solicitudes (exclusivo admin) y botón de cierre de sesión.
+4. *(Opcional)* **Generar `.aab` para publicación en Play Store:**
+   ```powershell
+   npx.cmd -y eas-cli build -p android --profile production
+   ```
 
 ---
 
-## 🎨 Sistema de Diseño, Tokens y Accesibilidad
+## Funcionalidades Implementadas
 
-El proyecto implementa un sistema de diseño institucional, limpio y accesible:
+### 1. Autenticación y Control de Acceso (Firebase Authentication)
+- Inicio de sesión (`WelcomeScreen`) y registro de usuarios (`RegisterScreen`) con correo electrónico, contraseña, nombre completo y horario de atención.
+- Persistencia de sesión nativa mediante `AsyncStorage` (`getReactNativePersistence`) y perfil almacenado en Firestore (`users/{uid}`).
+- Guard de navegación en `RootNavigator.tsx`: ningún usuario no autenticado puede acceder a las pantallas internas; al cerrar sesión desde **Ajustes**, la aplicación retorna al login.
 
-### Paleta Oficial Coral
-- **Primario (`colors.primary`):** Coral profesional `#FF5C53`
-- **Primario Oscuro (`colors.primaryDark`):** `#DE3F35`
-- **Fondo Suave (`colors.primarySoft`):** `#FFEBE8`
-- **Superficie Cálida (`colors.surfaceWarm`):** `#FFF2F0`
-- **Superficie Base (`colors.surface`):** `#FFFFFF`
-- **Fondo General (`colors.background`):** `#FAF8F6`
-- **Textos de Alto Contraste:** `#18181B` (títulos y números), `#3F3F46` (cuerpo), `#52525B` (placeholders e inactivos)
+### 2. Gestión de Pedidos con Persistencia Local SQLite (`expo-sqlite`)
+- Base de datos relacional local `amipets_store.db` (tabla `orders`) administrada desde `src/infrastructure/database/sqlite.ts` y `SqliteOrderRepository.ts`.
+- Creación, consulta, actualización de datos y estado (`PENDIENTE`, `EN_PROCESO`, `ENTREGADO`, `CANCELADO`), eliminación individual y vaciado controlado.
+- Historial aislado por `userId` autenticado, recuperación inmediata tras reiniciar la app incluso sin conexión, cálculo automático de subtotales/totales y control dinámico de stock.
 
-### Estándares de Accesibilidad (WCAG AA)
-- **Contraste de Placeholders:** Se utiliza `#52525B` sobre fondos claros (ratio de contraste > 4.7:1), asegurando legibilidad en exteriores o pantallas de bajo brillo.
-- **Navegación Inferior:** Íconos y textos inactivos a 12.5px con peso `Medium` en `#52525B`, equilibrando visibilidad sin opacar la pestaña activa en Coral.
-- **Zonas Táctiles (Tap Targets):** Botones y cápsulas de calendario con altura mínima de 44-48dp, facilitando la interacción en pantallas táctiles de cualquier tamaño.
+### 3. Sincronización Automática Offline/Online Sin Duplicados
+- Detección automática de conectividad con `@react-native-community/netinfo` en `OrdersContext.tsx`.
+- Envío automático de pedidos pendientes y eliminaciones hacia **Cloud Firestore** cuando vuelve la conexión, usando cola de resincronización (`resyncQueuedRef`) para cambios consecutivos rápidos.
+- Prevención de duplicados mediante ID determinístico (`setDoc(doc(db, 'orders', order.id), ...)`), borrado lógico (`deletedAt`) sincronizado y fusión inteligente al recuperar el historial desde la nube.
 
-### Sistema de Animaciones Nativas
-- **`FadeInView`:** Transiciones de entrada por aceleración nativa (`useNativeDriver: true`) con parámetros de `delay`, `distance`, `direction` y `scale` para un despliegue escalonado en todas las pantallas.
-- **`PulseView`:** Animaciones continuas de pulso suave para elementos en vivo (atenciones activas, indicador de turno, online dot del personal).
-- **`PressableScale`:** Micro-interacciones de retroalimentación elástica al presionar tarjetas, chips, servicios y botones.
+### 4. Comprobantes de Pedido (`expo-image-picker` + Firebase Storage)
+- Adjunto opcional de foto de comprobante desde cámara o galería en `CreateOrderScreen.tsx`.
+- Almacenamiento local inmediato en el dispositivo y subida automática a **Firebase Storage** (`receipts/{userId}/{orderId}.jpg`) al sincronizar, con fallback visual en `OrderDetailScreen.tsx` si una imagen remota se abre sin internet.
+
+### 5. Consumo de Servicios REST y APIs Externas
+- **Catálogo Pet Shop (`GET https://dummyjson.com/products?limit=24`):** Carga 24 productos reales de mascota con fotografía local, SKU, especie objetivo (`Perro` / `Gato`), búsqueda, filtros por categoría, stock dinámico y modal de detalle rápido.
+- **Clima para paseos y baño (`GET https://api.open-meteo.com/v1/forecast`):** Consulta temperatura actual, sensación térmica, humedad, viento e índice UV para 6 ciudades de Perú (`Lima`, `Arequipa`, `Trujillo`, `Cusco`, `Piura`, `Chiclayo`) generando recomendaciones clínicas para paseos y grooming desde `weatherAdviceService.ts`.
+- **Guía clínica y selector de razas (`Dog API v2`, `Dog CEO` y `CatFact Ninja`):**
+  - Pantalla `BreedGuideScreen` accesible desde Inicio con pestañas **Perros** y **Gatos**, buscador en vivo, paginación incremental, fichas técnicas detalladas y acceso directo para crear una solicitud con la raza elegida.
+  - Selector modal `BreedPickerModal` integrado en `CreateRequestScreen` para asignar rápidamente la raza al registrar una solicitud veterinaria.
+
+### 6. Módulo Clínico Veterinario y Sistema de Diseño
+- Admisión de pacientes con triaje (`URGENTE`, `ALTA`, `MEDIA`, `BAJA`), especie, raza opcional, agenda semanal (`CalendarScreen`), tarifario configurable y persistencia de solicitudes, avisos leídos y preferencias en `AsyncStorage`.
+- Paleta visual **Verde Salvia Clínico + Arena Cálida** (`#1F6F5C` primario, `#B8652A` acento de tienda, `#F8F7F4` fondo) con tipografías `Poppins` y `Caveat`.
+
+### Stack Tecnológico
+- **Framework:** React Native `0.88.0` + Expo `~58.0.16`
+- **Lenguaje:** TypeScript (`strict: true`)
+- **Nube:** `firebase@^13.4.0` (Authentication, Cloud Firestore, Cloud Storage)
+- **Persistencia local:** `expo-sqlite` + `@react-native-async-storage/async-storage`
+- **Red y multimedia:** `@react-native-community/netinfo`, `expo-image-picker`, `expo-system-ui`
+- **Navegación e íconos:** `@react-navigation/native`, `@react-navigation/native-stack`, `@react-navigation/bottom-tabs`, `@expo/vector-icons`
 
 ---
 
-## 🪝 Uso de Hooks Obligatorios en el Proyecto
+## Cómo Probar el CRUD con SQLite
 
-| Hook Obligatorio | Archivos de Implementación | Justificación Técnica en Amipets |
-| :--- | :--- | :--- |
-| **`useState`** | `CreateRequestScreen`, `RegisterScreen`, `WelcomeScreen`, `HomeScreen`, `RequestsScreen`, `CalendarScreen`, `RequestDetailScreen`, `SettingsScreen` | Controla el estado reactivo local: inputs de login y registro de recepcionistas, turno asignado, filtros de búsqueda, selector de fecha activa, switches y modales interactivos. |
-| **`useEffect`** | `RequestsProvider.tsx`, `RequestsScreen.tsx`, `CreateRequestScreen.tsx` | Sincroniza en segundo plano las solicitudes con el almacenamiento local, coordina parámetros de navegación enviados desde el Dashboard y activa animaciones escalonadas. |
-| **`useReducer`** | `RequestsProvider.tsx` (`requestsReducer.ts`, `actions.ts`, `initialState.ts`) | Centraliza la máquina de estados del CRUD clínico (`CREATE`, `UPDATE`, `UPDATE_STATUS`, `DELETE`, `CLEAR_ALL`) en una función pura, garantizando inmutabilidad y transiciones predecibles. |
-| **`useContext` (Context API)** | `RequestsProvider.tsx`, `AuthContext.tsx`, `ToastContext.tsx` | Comparte el estado global clínico, la sesión activa del personal y el sistema de alertas Toast con botón Deshacer a lo largo de toda la jerarquía de componentes sin *prop drilling*. |
+1. **Iniciar sesión:** Crea una cuenta en **Crear cuenta** o inicia sesión en la pantalla inicial.
+2. **Probar CREATE sin conexión (Modo Avión):**
+   - Activa el **Modo Avión** (o desconecta WiFi/datos).
+   - Ve a la pestaña **Pedidos**: verás el indicador de **Sin conexión · Guardado local**.
+   - Toca **+ Nuevo**, selecciona un producto del catálogo (disponible offline gracias al respaldo incluido), ajusta cantidad, ingresa datos del cliente, adjunta opcionalmente un comprobante y presiona **Guardar pedido**.
+3. **Probar READ y persistencia al reiniciar:**
+   - Verifica el pedido creado en la lista de **Pedidos** con su estado pendiente de envío a la nube.
+   - Cierra por completo la aplicación (swipe out desde recientes) y vuelve a abrirla aún en Modo Avión: el pedido sigue visible y filtrado únicamente para el usuario autenticado porque proviene de **SQLite**.
+4. **Probar UPDATE:**
+   - Abre el pedido en **Detalle del pedido** (`OrderDetailScreen`).
+   - Cambia su estado (`En proceso` o `Entregado`) o toca **Editar** para modificar cliente, producto o cantidad y guardar.
+5. **Probar sincronización automática y prevención de duplicados:**
+   - Desactiva el Modo Avión y espera unos segundos (o desliza hacia abajo para refrescar / presiona **Sincronizar**).
+   - `NetInfo` detecta el retorno de conexión, envía el pedido y sus cambios a Firestore usando su `id` único sin duplicarlo y actualiza su indicador a **Sincronizado**.
+6. **Probar DELETE:**
+   - En **Detalle del pedido**, toca **Eliminar pedido** y confirma. El registro se retira de SQLite y la eliminación se propaga también a Firestore para evitar que reaparezca.
 
 ---
 
-## 🏛️ Clean Architecture (4 Capas Claras)
+## Cómo Probar el Consumo REST
 
-El proyecto adopta **Clean Architecture**, desacoplando responsabilidades en 4 capas concéntricas con flujo de dependencias unidireccional:
+### 1. Catálogo Pet Shop (`dummyjson.com`)
+1. Con internet activo, entra a la pestaña **Catálogo**: observa el indicador de carga inicial y luego la lista de 24 productos reales.
+2. Usa la barra de búsqueda, filtra por categoría (`Alimento`, `Accesorios`, `Ropa`, `Juguetes`) o especie (`Perro` / `Gato`), y toca un producto para abrir el modal de detalle rápido.
+3. Activa el **Modo Avión** y recarga el catálogo (botón de actualizar o pull-to-refresh) desde cero para comprobar el estado de error de red y el botón **Reintentar** al recuperar conexión.
 
-```
+### 2. Clima para Paseos y Baño (`api.open-meteo.com`)
+1. En la pantalla **Inicio**, ubica la tarjeta **Clima para paseos**.
+2. Cambia entre ciudades (`Lima`, `Arequipa`, `Trujillo`, `Cusco`, `Piura`, `Chiclayo`) y observa cómo se actualizan temperatura, sensación térmica, humedad, viento, índice UV máximo y las recomendaciones automáticas de **Paseo** y **Baño y grooming**.
+3. Toca el botón de recarga para consultar nuevamente en vivo; si pierdes internet después de consultar una ciudad, verás los últimos datos guardados con el aviso discreto de respaldo offline (o el botón **Reintentar** si nunca se consultó antes).
+
+### 3. Guía Clínica y Selector de Razas (`dogapi.dog`, `dog.ceo`, `catfact.ninja`)
+1. En **Inicio**, toca **Guía clínica de razas**.
+2. Explora la pestaña **Perros** (fotografías, peso, esperanza de vida, indicador hipoalergénico y botón **Cargar más razas** para probar paginación) y cambia a **Gatos** para revisar las 98 razas felinas.
+3. Usa el buscador, abre la ficha de una raza y presiona **Registrar atención con esta raza**: se abrirá **Nueva solicitud** con la especie y raza precargadas.
+4. También puedes abrir **Nueva solicitud** manualmente, elegir especie **Perro** o **Gato** y tocar **Explorar razas** para abrir `BreedPickerModal` con búsqueda en vivo y selección inmediata.
+
+---
+
+## Estructura del Proyecto
+
+El código fuente dentro de `src/` sigue **Clean Architecture** en 4 capas independientes (`domain` <- `application` <- `infrastructure` <- `presentation`):
+
+```text
 Amipets/
-├── assets/                     # Recursos gráficos (hero.jpg, welcome.jpg, avatares)
+├── assets/
+│   ├── images/                        # Imágenes de portada y bienvenida
+│   └── products/                      # 24 fotografías reales del catálogo Pet Shop
 ├── src/
-│   ├── domain/                 # [1] CAPA DE DOMINIO (Entidades, Modelos y Contratos)
-│   │   ├── models/
-│   │   │   ├── request.ts      # Entidad VeterinaryRequest, estados, prioridades, registradoPor
-│   │   │   └── user.ts         # Entidad User, Session, UserRole, turnos y DTOs
-│   │   ├── repositories/
-│   │   │   ├── IRequestRepository.ts # Contrato abstracto para el CRUD de solicitudes
-│   │   │   └── IAuthRepository.ts    # Contrato abstracto para autenticación y colaboradores
-│   │   └── index.ts
-│   │
-│   ├── application/            # [2] CAPA DE APLICACIÓN (Casos de Uso y Reglas de Negocio)
-│   │   ├── services/
-│   │   │   ├── requestService.ts     # Ordenamiento clínico por triage, filtros y conteos
-│   │   │   └── authService.ts        # Validaciones de roles, turnos y credenciales
-│   │   └── index.ts
-│   │
-│   ├── infrastructure/         # [3] CAPA DE INFRAESTRUCTURA (Implementaciones y Persistencia)
-│   │   ├── repositories/
-│   │   │   ├── InMemoryRequestRepository.ts # Persistencia local de solicitudes y tarifario
-│   │   │   └── InMemoryAuthRepository.ts    # Persistencia de personal y admin preconfigurado
-│   │   └── index.ts
-│   │
-│   └── presentation/           # [4] CAPA DE PRESENTACIÓN (UI, Vistas y Componentes)
-│       ├── screens/
-│       │   ├── WelcomeScreen.tsx       # Inicio de sesión con marca Amipets
-│       │   ├── RegisterScreen.tsx      # Registro de recepcionistas con turno
-│       │   ├── HomeScreen.tsx          # Dashboard clínico con métricas en vivo
-│       │   ├── RequestsScreen.tsx      # Directorio general con buscador y filtros
-│       │   ├── CalendarScreen.tsx      # Agenda semanal compartida por turnos
-│       │   ├── CreateRequestScreen.tsx # Admisión con triage asistido y tarifario
-│       │   ├── RequestDetailScreen.tsx # Ficha clínica integral y ciclo de vida
-│       │   └── SettingsScreen.tsx      # Tarifario oficial, equipo clínico y mantenimiento
-│       ├── components/                 # Componentes atómicos (Cards, Chips, Modales, Animaciones)
-│       │   ├── FadeInView.tsx          # Animación de entrada escalonada nativa
-│       │   ├── PulseView.tsx           # Animación de pulso suave en vivo
-│       │   ├── PressableScale.tsx      # Respuesta táctil elástica
-│       │   ├── RequestCard.tsx         # Tarjeta de paciente con triage
-│       │   ├── FormField.tsx           # Input accesible con iconos y validación
-│       │   ├── PrimaryButton.tsx       # Botón principal y outlined
-│       │   └── ...
-│       ├── navigation/                 # RootNavigator (Stack) y MainTabs (Bottom Tabs)
-│       ├── context/                    # AuthContext, RequestsContext, RequestsProvider, ToastContext
-│       ├── store/                      # Reducer puro, estado inicial y acciones del CRUD
-│       ├── theme/                      # Tokens (colors, typography, spacing, radius, shadows)
-│       └── utils/                      # Formateadores de fecha, IDs, metadatos y validaciones UI
-├── App.tsx                     # Punto de entrada con fuentes y Providers
-├── app.json                    # Configuración de Expo / React Native
-├── package.json                # Dependencias y scripts
-└── tsconfig.json               # Configuración del compilador TypeScript
+│   ├── domain/                        # [1] Entidades y contratos de repositorios
+│   │   ├── models/                    # breed.ts, order.ts, product.ts, request.ts, user.ts, weather.ts
+│   │   └── repositories/              # IOrderRepository.ts, IRequestRepository.ts
+│   ├── application/                   # [2] Casos de uso, lógica de negocio y utilidades
+│   │   ├── services/                  # authService.ts, orderService.ts, requestService.ts, weatherAdviceService.ts
+│   │   └── utils/                     # id.ts
+│   ├── infrastructure/                # [3] SQLite, consumo REST y Firebase
+│   │   ├── database/                  # sqlite.ts (tabla orders y migraciones)
+│   │   ├── repositories/              # SqliteOrderRepository.ts, InMemoryRequestRepository.ts
+│   │   └── services/                  # breedsApiService.ts, catalogApiService.ts, firebaseConfig.ts, firebaseOrderSyncService.ts, weatherApiService.ts
+│   └── presentation/                  # [4] UI, pantallas, navegación y estado
+│       ├── components/                # BreedPickerModal.tsx, CatalogPickerModal.tsx, OrderCard.tsx, RequestCard.tsx, WeatherPetCard.tsx, Chips.tsx, etc.
+│       ├── context/                   # AuthContext.tsx, CatalogContext.tsx, OrdersContext.tsx, RequestsProvider.tsx, ToastContext.tsx
+│       ├── navigation/                # MainTabs.tsx, RootNavigator.tsx, types.ts
+│       ├── screens/                   # WelcomeScreen, RegisterScreen, HomeScreen, BreedGuideScreen, OrdersScreen, CreateOrderScreen, OrderDetailScreen, CatalogScreen, RequestsScreen, CreateRequestScreen, RequestDetailScreen, CalendarScreen, SettingsScreen
+│       ├── store/                     # actions.ts, initialState.ts, requestsReducer.ts
+│       ├── theme/                     # colors.ts, typography.ts, index.ts
+│       └── utils/                     # date.ts, orderMeta.ts, requestMeta.ts, requests.ts, validation.ts
+├── App.tsx                            # Punto de entrada raíz y proveedores
+├── app.json                           # Configuración de Expo, paquete Android y plugins nativos
+├── eas.json                           # Perfiles de compilación EAS (preview APK / production AAB)
+├── metro.config.js                    # Configuración Metro compatible con Firebase JS SDK
+├── firebase.json                      # Configuración CLI de Auth, Firestore y Storage
+├── firestore.rules                    # Reglas de seguridad por usuario en Firestore
+├── firestore.indexes.json             # Índices compuestos de Firestore
+├── storage.rules                      # Reglas de seguridad para comprobantes en Storage
+├── .env.example                       # Plantilla de variables de entorno de Firebase
+├── tsconfig.json                      # Configuración TypeScript (strict)
+└── package.json                       # Dependencias y scripts
 ```
 
 ---
 
-## 📄 Licencia
+## Licencia
 
-Este proyecto fue desarrollado con fines educativos y de demostración técnica para la Escuela de Tecnología de IDAT.
+Proyecto académico desarrollado para fines educativos y de demostración técnica en la Escuela de Tecnología — IDAT.

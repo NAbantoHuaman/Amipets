@@ -1,8 +1,10 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { OrderCategory, OrderStatus } from '../../domain/models/order';
 import { Priority, RequestStatus, ServiceType } from '../../domain/models/request';
 import { colors, fonts, radius, spacing } from '../theme';
+import { ORDER_CATEGORY_META, ORDER_STATUS_META } from '../utils/orderMeta';
 import { IconName, PRIORITY_META, SERVICE_META, STATUS_META } from '../utils/requestMeta';
 
 interface ChipProps {
@@ -78,6 +80,35 @@ export function ServiceChip({ service, size }: { service: ServiceType; size?: 's
       icon={m.icon}
       size={size}
       accessibilityLabel={`Servicio: ${m.label}`}
+    />
+  );
+}
+
+export function OrderStatusChip({ status, size }: { status: OrderStatus; size?: 'sm' | 'md' }) {
+  const m = ORDER_STATUS_META[status];
+  return (
+    <Chip
+      label={m.label}
+      color={m.color}
+      background={m.background}
+      icon={m.icon}
+      size={size}
+      accessibilityLabel={`Estado del pedido: ${m.label}`}
+    />
+  );
+}
+
+export function OrderCategoryChip({ category, size }: { category: OrderCategory; size?: 'sm' | 'md' }) {
+  const m = ORDER_CATEGORY_META[category];
+  return (
+    <Chip
+      label={m.label}
+      color={m.color}
+      background={m.background}
+      icon={m.icon}
+      size={size}
+      variant="outline"
+      accessibilityLabel={`Categoría: ${m.label}`}
     />
   );
 }
