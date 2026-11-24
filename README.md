@@ -1,5 +1,13 @@
 # Amipets — Clínica Veterinaria y Pet Shop
 
+## Descarga del APK Compilado (Android)
+
+- **Descargar instalador (`Amipets.apk`):** [Descargar APK desde Google Drive](https://drive.google.com/file/d/107RAk9mZtTZ_DxvMwzMRM8DUJob6T5kr/view?usp=sharing)
+- **Instalación directa:** Descarga el archivo en tu dispositivo Android, habilita *"Instalar aplicaciones desconocidas"* si el sistema lo solicita e instala el paquete `com.amipets.app` (Android 7.0+ / `minSdk 24`).
+- **Incluye:** Ícono y pantalla de carga personalizados, persistencia offline en SQLite, sincronización con Firebase, catálogo Pet Shop, clima para paseos y guía clínica de razas.
+
+---
+
 ## Descripción del Proyecto
 
 **Amipets** es una aplicación móvil desarrollada en **React Native** con **Expo (SDK 58)**, **TypeScript**, **SQLite (`expo-sqlite`)**, **Firebase** y **APIs REST externas** bajo **Clean Architecture** en 4 capas. Está orientada a emprendimientos veterinarios y tiendas de mascotas que necesitan gestionar solicitudes clínicas y controlar pedidos de tienda con funcionamiento completo sin conexión a internet y sincronización automática en la nube.
@@ -127,14 +135,14 @@ Las APIs externas integradas para catálogo (`dummyjson.com`), clima (`api.open-
    ```powershell
    npx.cmd expo export --platform android --output-dir .expo-verify-dist
    ```
-   Esta comprobación empaqueta el código JavaScript/Hermes y los 84 assets locales usando `metro.config.js`. Tras verificar, puedes eliminar la carpeta `.expo-verify-dist`.
+   Esta comprobación empaqueta el código JavaScript/Hermes y los 90 assets locales usando `metro.config.js`. Tras verificar, puedes eliminar la carpeta `.expo-verify-dist`.
 
 ---
 
 ## Pasos para Generar el APK
 
 El proyecto ya cuenta con:
-- **`app.json`:** paquete Android `com.amipets.app`, ícono adaptativo (`#E6F3EF`), orientación `portrait`, modo claro (`userInterfaceStyle: "light"`) y plugins nativos (`expo-sqlite`, `expo-font`, `expo-image-picker` con `microphonePermission: false`).
+- **`app.json`:** paquete Android `com.amipets.app`, ícono ilustrado personalizado adaptativo (`#27705F`), pantalla de carga (`#FAF6EF`), orientación `portrait`, modo claro (`userInterfaceStyle: "light"`) y plugins nativos (`expo-sqlite`, `expo-font`, `expo-image-picker` con `microphonePermission: false`).
 - **`eas.json`:** perfil `preview` configurado con `"buildType": "apk"` (instalación directa) y perfil `production` con `"buildType": "app-bundle"` (`.aab` para Google Play).
 - **`metro.config.js`:** soporte `.cjs` compatible con `firebase@^13.4.0` en builds nativos Android.
 
@@ -193,10 +201,10 @@ Ejecuta los siguientes comandos en la raíz del proyecto para compilar el `.apk`
 
 ### 6. Módulo Clínico Veterinario y Sistema de Diseño
 - Admisión de pacientes con triaje (`URGENTE`, `ALTA`, `MEDIA`, `BAJA`), especie, raza opcional, agenda semanal (`CalendarScreen`), tarifario configurable y persistencia de solicitudes, avisos leídos y preferencias en `AsyncStorage`.
-- Paleta visual **Verde Salvia Clínico + Arena Cálida** (`#1F6F5C` primario, `#B8652A` acento de tienda, `#F8F7F4` fondo) con tipografías `Poppins` y `Caveat`.
+- Paleta visual **Verde Salvia Clínico + Crema Cálido** (`#1F6F5C` primario, `#B8652A` acento de tienda, `#FAF6EF` fondo con patrón sutil de patitas `PawBackdrop`, retratos reales por especie en `PetAvatar` e ilustraciones en `EmptyState`) con tipografías `Poppins` y `Caveat`.
 
 ### Stack Tecnológico
-- **Framework:** React Native `0.88.0` + Expo `~58.0.16`
+- **Framework:** React Native `0.88.1` + Expo `~58.0.26`
 - **Lenguaje:** TypeScript (`strict: true`)
 - **Nube:** `firebase@^13.4.0` (Authentication, Cloud Firestore, Cloud Storage)
 - **Persistencia local:** `expo-sqlite` + `@react-native-async-storage/async-storage`
@@ -234,7 +242,7 @@ Ejecuta los siguientes comandos en la raíz del proyecto para compilar el `.apk`
 3. Activa el **Modo Avión** y recarga el catálogo (botón de actualizar o pull-to-refresh) desde cero para comprobar el estado de error de red y el botón **Reintentar** al recuperar conexión.
 
 ### 2. Clima para Paseos y Baño (`api.open-meteo.com`)
-1. En la pantalla **Inicio**, ubica la tarjeta **Clima para paseos**.
+1. En la pantalla **Inicio**, toca la píldora de clima en vivo integrada en el banner superior para abrir el panel **Clima para paseos**.
 2. Cambia entre ciudades (`Lima`, `Arequipa`, `Trujillo`, `Cusco`, `Piura`, `Chiclayo`) y observa cómo se actualizan temperatura, sensación térmica, humedad, viento, índice UV máximo y las recomendaciones automáticas de **Paseo** y **Baño y grooming**.
 3. Toca el botón de recarga para consultar nuevamente en vivo; si pierdes internet después de consultar una ciudad, verás los últimos datos guardados con el aviso discreto de respaldo offline (o el botón **Reintentar** si nunca se consultó antes).
 
@@ -253,8 +261,10 @@ El código fuente dentro de `src/` sigue **Clean Architecture** en 4 capas indep
 ```text
 Amipets/
 ├── assets/
-│   ├── images/                        # Imágenes de portada y bienvenida
+│   ├── images/                        # Imágenes de portada, bienvenida e ilustraciones vacías
+│   ├── pets/                          # Retratos de mascotas por especie
 │   └── products/                      # 24 fotografías reales del catálogo Pet Shop
+├── docs/                              # Documentación del proyecto en PDF
 ├── src/
 │   ├── domain/                        # [1] Entidades y contratos de repositorios
 │   │   ├── models/                    # breed.ts, order.ts, product.ts, request.ts, user.ts, weather.ts
@@ -267,7 +277,7 @@ Amipets/
 │   │   ├── repositories/              # SqliteOrderRepository.ts, InMemoryRequestRepository.ts
 │   │   └── services/                  # breedsApiService.ts, catalogApiService.ts, firebaseConfig.ts, firebaseOrderSyncService.ts, weatherApiService.ts
 │   └── presentation/                  # [4] UI, pantallas, navegación y estado
-│       ├── components/                # BreedPickerModal.tsx, CatalogPickerModal.tsx, OrderCard.tsx, RequestCard.tsx, WeatherPetCard.tsx, Chips.tsx, etc.
+│       ├── components/                # BreedPickerModal.tsx, CatalogPickerModal.tsx, OrderCard.tsx, PawBackdrop.tsx, PetAvatar.tsx, RequestCard.tsx, WeatherPetCard.tsx, Chips.tsx, etc.
 │       ├── context/                   # AuthContext.tsx, CatalogContext.tsx, OrdersContext.tsx, RequestsProvider.tsx, ToastContext.tsx
 │       ├── navigation/                # MainTabs.tsx, RootNavigator.tsx, types.ts
 │       ├── screens/                   # WelcomeScreen, RegisterScreen, HomeScreen, BreedGuideScreen, OrdersScreen, CreateOrderScreen, OrderDetailScreen, CatalogScreen, RequestsScreen, CreateRequestScreen, RequestDetailScreen, CalendarScreen, SettingsScreen
