@@ -23,6 +23,7 @@ import {
   FilterOption,
   FilterTabs,
   OrderCard,
+  PawBackdrop,
   PressableScale,
   PrimaryButton,
   SearchBar,
@@ -158,8 +159,8 @@ export function OrdersScreen({ navigation, route }: Props) {
       return (
         <View style={styles.emptyContainer}>
           <EmptyState
-            icon="bag-handle-outline"
-            title="Aún no hay pedidos"
+            illustration="orders"
+            title="No hay pedidos por el momento"
             message="Registra los pedidos del catálogo para tus clientes."
             actionLabel="Nuevo pedido"
             onAction={openCreate}
@@ -186,6 +187,7 @@ export function OrdersScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={common.screen} edges={['top']}>
+      <PawBackdrop variant="list" />
       <View style={styles.container}>
         <FadeInView delay={30} distance={8}>
           <View style={styles.header}>

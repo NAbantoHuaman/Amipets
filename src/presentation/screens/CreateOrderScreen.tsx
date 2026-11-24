@@ -33,6 +33,7 @@ import {
   FormField,
   IconTile,
   OrderCategoryChip,
+  PawBackdrop,
   PetAvatar,
   PressableScale,
   PrimaryButton,
@@ -356,6 +357,7 @@ export function CreateOrderScreen({ navigation, route }: Props) {
   if (isEdit && !existing) {
     return (
       <SafeAreaView style={common.screen}>
+        <PawBackdrop variant="detail" />
         <ScreenHeader title="Editar pedido" onBack={() => navigation.goBack()} />
         <EmptyState
           icon="alert-circle-outline"
@@ -370,6 +372,7 @@ export function CreateOrderScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={common.screen} edges={['top', 'bottom']}>
+      <PawBackdrop variant="detail" />
       <ScreenHeader
         title={isEdit ? 'Editar pedido' : 'Nuevo pedido'}
         onBack={() => navigation.goBack()}

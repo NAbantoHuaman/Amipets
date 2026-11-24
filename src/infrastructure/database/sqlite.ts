@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import * as SQLite from 'expo-sqlite';
+import type * as SQLite from 'expo-sqlite';
 
 export const DATABASE_NAME = 'amipets_store.db';
 export const ORDERS_FALLBACK_STORAGE_KEY = 'amipets_sqlite_orders_v1';
@@ -69,6 +69,7 @@ async function initializeDatabase(): Promise<SQLite.SQLiteDatabase | null> {
   }
 
   try {
+    const SQLite = require('expo-sqlite') as typeof import('expo-sqlite');
     const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
     await db.execAsync(CREATE_ORDERS_TABLE_SQL);
     await migrateOrdersTable(db);

@@ -20,6 +20,7 @@ import {
   IconButton,
   IconTile,
   OrderCard,
+  PawBackdrop,
   PressableScale,
   PrimaryButton,
   PulseView,
@@ -31,28 +32,21 @@ import { shortGreetingName, useAuth } from '../context/AuthContext';
 import { useOrders } from '../context/OrdersContext';
 import { useRequests } from '../context/RequestsContext';
 import { calculateOrderTotal, countOrdersByStatus } from '../../application/services/orderService';
-import { RequestStatus, SERVICE_TYPES, ServiceType } from '../../domain/models/request';
+import { ServiceType } from '../../domain/models/request';
 import { RootStackParamList, TabParamList } from '../navigation/types';
 import { colors, common, fonts, radius, shadows, spacing, typography } from '../theme';
-import { formatLongToday, formatRelative, greeting, isSameDay } from '../utils/date';
-import { ORDER_STATUS_META } from '../utils/orderMeta';
-import { SERVICE_META, STATUS_META } from '../utils/requestMeta';
-import { activeUrgent, countByService, countByStatus, sortByNewest } from '../utils/requests';
+import { formatRelative, formatShortToday, greeting, isSameDay } from '../utils/date';
+import { SERVICE_META } from '../utils/requestMeta';
+import { activeUrgent, countByStatus } from '../utils/requests';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Home'>,
   NativeStackScreenProps<RootStackParamList>
 >;
 
-const SUMMARY: { status: RequestStatus; label: string; countColor: string; labelColor: string }[] = [
-  { status: 'PENDIENTE', label: 'Pendientes', countColor: colors.text, labelColor: '#925B14' },
-  { status: 'EN_ATENCION', label: 'En atención', countColor: colors.text, labelColor: '#1E4E8C' },
-  { status: 'FINALIZADO', label: 'Finalizadas', countColor: colors.text, labelColor: colors.primaryDark },
-];
-
 export function HomeScreen({ navigation }: Props) {
   const { session } = useAuth();
-  const { requests, loading, servicePrices } = useRequests();
+  const { requests, loading } = useRequests();
   const { orders } = useOrders();
   const [showNotifications, setShowNotifications] = useState(false);
   const [readIds, setReadIds] = useState<Record<string, boolean>>({});
@@ -80,16 +74,31 @@ export function HomeScreen({ navigation }: Props) {
   const counts = useMemo(() => countByStatus(requests), [requests]);
   const orderCounts = useMemo(() => countOrdersByStatus(orders), [orders]);
   const urgent = useMemo(() => activeUrgent(requests), [requests]);
-  const latest = useMemo(() => sortByNewest(requests).slice(0, 3), [requests]);
-  const latestOrders = useMemo(
-    () =>
-      [...orders]
-        .sort((a, b) => new Date(b.fechaRegistro).getTime() - new Date(a.fechaRegistro).getTime())
-        .slice(0, 2),
-    [orders],
+  const todayCount = useMemo(
+    () => requests.filter((r) => isSameDay(r.fechaRegistro, new Date())).length,
+    [requests],
   );
-  const todayCount = useMemo(() => requests.filter((r) => isSameDay(r.fechaRegistro, new Date())).length, [requests]);
-  const serviceCounts = useMemo(() => countByService(requests), [requests]);
+
+  const activeClinicCount = counts.PENDIENTE + counts.EN_ATENCION;
+  const activeOrdersCount = orderCounts.PENDIENTE + orderCounts.EN_PROCESO;
+
+  const recentActivity = useMemo(() => {
+    const items = [
+      ...requests.map((r) => ({
+        kind: 'request' as const,
+        key: `req-${r.id}`,
+        dateMs: new Date(r.fechaRegistro).getTime(),
+        request: r,
+      })),
+      ...orders.map((o) => ({
+        kind: 'order' as const,
+        key: `ord-${o.id}`,
+        dateMs: new Date(o.fechaRegistro).getTime(),
+        order: o,
+      })),
+    ];
+    return items.sort((a, b) => b.dateMs - a.dateMs).slice(0, 3);
+  }, [requests, orders]);
 
   const notifications = useMemo(() => {
     const list: {
@@ -219,12 +228,16 @@ export function HomeScreen({ navigation }: Props) {
 
   const openDetail = (id: string) => navigation.navigate('RequestDetail', { requestId: id });
   const openOrderDetail = (id: string) => navigation.navigate('OrderDetail', { orderId: id });
-  const openCreate = (service?: ServiceType) => navigation.navigate('CreateRequest', service ? { service } : undefined);
+  const openCreate = (service?: ServiceType) =>
+    navigation.navigate('CreateRequest', service ? { service } : undefined);
   const openRequests = (params: TabParamList['Requests'] = {}) =>
     navigation.navigate('Requests', { status: 'TODOS', priority: 'TODAS', ...params, nonce: Date.now() });
+  const openOrders = () =>
+    navigation.navigate('Orders', { status: 'TODOS', nonce: Date.now() });
 
   return (
     <SafeAreaView style={common.screen} edges={['top']}>
+      <PawBackdrop variant="home" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
         <FadeInView style={styles.header}>
@@ -232,8 +245,8 @@ export function HomeScreen({ navigation }: Props) {
             <Ionicons name="paw" size={20} color={colors.white} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.greeting}>
-              {greeting()} · {formatLongToday()}
+            <Text style={styles.greeting} numberOfLines={1}>
+              {greeting().replace(/,$/, '')} · {formatShortToday()}
             </Text>
             <Text style={styles.name} numberOfLines={1}>
               {shortGreetingName(session) || 'Dr. Carlos'}
@@ -254,22 +267,31 @@ export function HomeScreen({ navigation }: Props) {
           />
         </FadeInView>
 
-        <FadeInView delay={80}>
+        <FadeInView delay={70}>
           <View style={styles.hero}>
-            <Image source={require('../../../assets/images/hero.jpg')} style={styles.heroImage} resizeMode="cover" />
+            <Image
+              source={require('../../../assets/images/hero.jpg')}
+              style={styles.heroImage}
+              resizeMode="cover"
+            />
             <View style={styles.heroText}>
-              <View style={styles.heroPill}>
-                <PulseView minScale={0.7} maxScale={1.3} duration={1300}>
-                  <View style={styles.heroPillDot} />
-                </PulseView>
-                <Text style={styles.heroPillText}>
-                  {todayCount} {todayCount === 1 ? 'atención hoy' : 'atenciones hoy'}
-                </Text>
+              <View style={styles.heroTopPills}>
+                <View style={styles.heroPill}>
+                  <PulseView minScale={0.7} maxScale={1.3} duration={1300}>
+                    <View style={styles.heroPillDot} />
+                  </PulseView>
+                  <Text style={styles.heroPillText}>
+                    {todayCount} {todayCount === 1 ? 'cita hoy' : 'citas hoy'}
+                  </Text>
+                </View>
+                <WeatherPetCard />
               </View>
+
               <View>
                 <Text style={styles.heroScript}>Mascotas felices</Text>
                 <Text style={styles.heroTitle}>Cuidado médico{'\n'}en cada consulta</Text>
               </View>
+
               <PrimaryButton
                 title="Nueva solicitud"
                 onPress={() => openCreate()}
@@ -281,120 +303,56 @@ export function HomeScreen({ navigation }: Props) {
           </View>
         </FadeInView>
 
-        <FadeInView delay={130} style={styles.summarySection}>
-          <View style={styles.summaryRow}>
-            {SUMMARY.map(({ status, label, countColor, labelColor }) => {
-              const meta = STATUS_META[status];
-              return (
-                <PressableScale
-                  key={status}
-                  onPress={() => openRequests({ status })}
-                  style={[styles.summaryCard, { backgroundColor: meta.background, borderColor: meta.color + '45' }]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${counts[status]} ${label}`}
-                  testID={`home-count-${status}`}
-                >
-                  <View style={styles.summaryTopRow}>
-                    <View style={[styles.summaryIcon, { backgroundColor: colors.surface }]}>
-                      <Ionicons name={meta.icon} size={16} color={meta.color} />
-                    </View>
-                    {loading ? (
-                      <ActivityIndicator color={meta.color} style={{ height: 28 }} />
-                    ) : (
-                      <Text style={[styles.summaryCount, { color: countColor }]}>{counts[status]}</Text>
-                    )}
-                  </View>
-                  <Text style={[styles.summaryLabel, { color: labelColor }]}>{label}</Text>
-                </PressableScale>
-              );
-            })}
-          </View>
-        </FadeInView>
-
-        <FadeInView delay={145}>
-          <WeatherPetCard />
+        <FadeInView delay={120} style={styles.summaryPairRow}>
           <PressableScale
-            onPress={() => navigation.navigate('BreedGuide')}
-            style={styles.breedBannerCard}
+            onPress={() => openRequests()}
+            style={styles.summaryPairCard}
             accessibilityRole="button"
-            accessibilityLabel="Abrir guía de razas de perros y gatos"
-            testID="home-breed-guide"
+            accessibilityLabel={`${activeClinicCount} atenciones clínicas activas`}
+            testID="home-summary-clinic"
           >
-            <View style={styles.breedBannerIcon}>
-              <Ionicons name="book-outline" size={20} color={colors.primaryDark} />
+            <View style={styles.summaryPairTop}>
+              <View style={[styles.summaryPairIcon, { backgroundColor: colors.primarySoft }]}>
+                <Ionicons name="medkit-outline" size={17} color={colors.primaryDark} />
+              </View>
+              {loading ? (
+                <ActivityIndicator color={colors.primary} size="small" />
+              ) : (
+                <Text style={styles.summaryPairCount}>{activeClinicCount}</Text>
+              )}
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.breedBannerTitle}>Guía clínica de razas</Text>
-              <Text style={styles.breedBannerSubtitle}>
-                Consulta peso ideal, longevidad y cuidados de perros y gatos
-              </Text>
+            <Text style={styles.summaryPairTitle}>Clínica activa</Text>
+            <Text style={styles.summaryPairMeta} numberOfLines={1}>
+              {activeClinicCount === 0
+                ? 'Todo al día'
+                : `${counts.PENDIENTE} pend. · ${counts.EN_ATENCION} en curso`}
+            </Text>
+          </PressableScale>
+
+          <PressableScale
+            onPress={openOrders}
+            style={styles.summaryPairCard}
+            accessibilityRole="button"
+            accessibilityLabel={`${activeOrdersCount} pedidos de tienda activos`}
+            testID="home-summary-orders"
+          >
+            <View style={styles.summaryPairTop}>
+              <View style={[styles.summaryPairIcon, { backgroundColor: colors.accentSoft }]}>
+                <Ionicons name="bag-handle-outline" size={17} color={colors.accent} />
+              </View>
+              <Text style={styles.summaryPairCount}>{activeOrdersCount}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.primaryDark} />
+            <Text style={styles.summaryPairTitle}>Pedidos activos</Text>
+            <Text style={styles.summaryPairMeta} numberOfLines={1}>
+              {activeOrdersCount === 0
+                ? 'Sin pendientes'
+                : `${orderCounts.PENDIENTE} pend. · ${orderCounts.EN_PROCESO} en proceso`}
+            </Text>
           </PressableScale>
         </FadeInView>
 
-        <FadeInView delay={160} style={styles.section}>
-          <SectionHeader
-            title="Servicios asistenciales"
-            actionLabel="Ver todos"
-            onAction={() => openRequests()}
-          />
-          <View style={styles.servicesGrid}>
-            {SERVICE_TYPES.map((s) => {
-              const meta = SERVICE_META[s];
-              const activeCount = serviceCounts[s];
-              const badge = activeCount === 0 ? 'Sin activas' : activeCount === 1 ? '1 activa' : `${activeCount} activas`;
-
-              return (
-                <PressableScale
-                  key={s}
-                  onPress={() => openCreate(s)}
-                  style={styles.serviceSquareCard}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Nueva solicitud de ${meta.label}`}
-                  testID={`home-service-${s}`}
-                >
-                  <View style={styles.serviceCardTopRow}>
-                    <View style={[styles.serviceIconContainer, { backgroundColor: meta.background }]}>
-                      <Ionicons name={meta.icon} size={20} color={meta.color} />
-                    </View>
-                    <View
-                      style={[
-                        styles.serviceBadgePill,
-                        s === 'EMERGENCIA' && styles.serviceBadgeEmergency,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.serviceBadgeText,
-                          s === 'EMERGENCIA' && { color: colors.danger },
-                        ]}
-                      >
-                        {badge}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.serviceCardBottom}>
-                    <Text style={styles.serviceCardTitle} numberOfLines={1}>
-                      {meta.label}
-                    </Text>
-                    <View style={styles.serviceFooterRow}>
-                      <Text style={styles.serviceCardHint} numberOfLines={1}>
-                        {meta.hint}
-                      </Text>
-                      <Text style={[styles.servicePriceText, { color: meta.color }]}>
-                        S/. {servicePrices[s].toFixed(0)}
-                      </Text>
-                    </View>
-                  </View>
-                </PressableScale>
-              );
-            })}
-          </View>
-        </FadeInView>
-
         {urgent.length > 0 && (
-          <FadeInView delay={220}>
+          <FadeInView delay={150}>
             <PressableScale
               onPress={() => openRequests({ priority: 'URGENTE' })}
               style={styles.alert}
@@ -403,7 +361,7 @@ export function HomeScreen({ navigation }: Props) {
               testID="home-urgent"
             >
               <PulseView minScale={0.88} maxScale={1.12} duration={1100}>
-                <IconTile icon="alert-circle" color={colors.white} background={colors.danger} size={40} />
+                <IconTile icon="alert-circle" color={colors.white} background={colors.danger} size={38} />
               </PulseView>
               <View style={{ flex: 1 }}>
                 <Text style={styles.alertTitle}>
@@ -418,92 +376,76 @@ export function HomeScreen({ navigation }: Props) {
           </FadeInView>
         )}
 
-        <FadeInView delay={260} style={styles.section}>
-          <SectionHeader
-            title="Pedidos de tienda"
-            actionLabel="Ver pedidos"
-            onAction={() => navigation.navigate('Orders', { status: 'TODOS', nonce: Date.now() })}
-          />
-          <View style={styles.petShopCard}>
-            <View style={styles.petShopStatsRow}>
-              {(
-                [
-                  { status: 'PENDIENTE', label: 'Pendientes' },
-                  { status: 'EN_PROCESO', label: 'En proceso' },
-                  { status: 'ENTREGADO', label: 'Entregados' },
-                ] as const
-              ).map((item) => {
-                const meta = ORDER_STATUS_META[item.status];
-                return (
-                  <PressableScale
-                    key={item.status}
-                    onPress={() =>
-                      navigation.navigate('Orders', { status: item.status, nonce: Date.now() })
-                    }
-                    style={[styles.petShopStatBox, { backgroundColor: meta.background }]}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${orderCounts[item.status]} pedidos ${item.label}`}
-                  >
-                    <Text style={[styles.petShopStatCount, { color: meta.color }]}>
-                      {orderCounts[item.status]}
-                    </Text>
-                    <Text style={styles.petShopStatLabel}>{item.label}</Text>
-                  </PressableScale>
-                );
-              })}
+        <FadeInView delay={180} style={styles.quickRow}>
+          <PressableScale
+            onPress={() => navigation.navigate('CreateOrder')}
+            style={[styles.quickCard, { backgroundColor: colors.accentSoft, borderColor: '#EBD0BC' }]}
+            accessibilityRole="button"
+            accessibilityLabel="Registrar nuevo pedido de tienda"
+            testID="home-new-order"
+          >
+            <View style={styles.quickIconBox}>
+              <Ionicons name="add-circle-outline" size={19} color={colors.accent} />
             </View>
-            <View style={styles.petShopActionsRow}>
-              <PrimaryButton
-                title="Nuevo pedido"
-                onPress={() => navigation.navigate('CreateOrder')}
-                compact
-                icon="add-circle-outline"
-                trailingIcon={null}
-                style={{ flex: 1 }}
-                testID="home-new-order"
-              />
-              <PrimaryButton
-                title="Catálogo"
-                onPress={() => navigation.navigate('Catalog')}
-                variant="secondary"
-                compact
-                icon="storefront-outline"
-                trailingIcon={null}
-                style={{ flex: 1 }}
-                testID="home-catalog"
-              />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={[styles.quickTitle, { color: '#8C4818' }]} numberOfLines={1}>
+                Nuevo pedido
+              </Text>
+              <Text style={styles.quickHint} numberOfLines={1}>
+                Tienda Pet Shop
+              </Text>
             </View>
-          </View>
+          </PressableScale>
 
-          {latestOrders.length > 0 && (
-            <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
-              {latestOrders.map((o) => (
-                <OrderCard key={o.id} order={o} onPress={openOrderDetail} />
-              ))}
+          <PressableScale
+            onPress={() => navigation.navigate('BreedGuide')}
+            style={[styles.quickCard, { backgroundColor: colors.primarySoft, borderColor: colors.primaryBorder }]}
+            accessibilityRole="button"
+            accessibilityLabel="Abrir guía clínica de razas"
+            testID="home-breed-guide"
+          >
+            <View style={styles.quickIconBox}>
+              <Ionicons name="book-outline" size={18} color={colors.primaryDark} />
             </View>
-          )}
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={[styles.quickTitle, { color: colors.primaryDark }]} numberOfLines={1}>
+                Guía de razas
+              </Text>
+              <Text style={styles.quickHint} numberOfLines={1}>
+                Perros y gatos
+              </Text>
+            </View>
+          </PressableScale>
         </FadeInView>
 
-        <FadeInView delay={300} style={styles.section}>
-          <SectionHeader title="Ingresos recientes" actionLabel="Directorio completo" onAction={() => openRequests()} />
+        <FadeInView delay={220} style={styles.section}>
+          <SectionHeader
+            title="Actividad reciente"
+            actionLabel="Ver pedidos"
+            onAction={openOrders}
+          />
           {loading ? (
             <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.xl }} />
-          ) : latest.length === 0 ? (
+          ) : recentActivity.length === 0 ? (
             <View style={styles.emptyCard}>
               <EmptyState
                 compact
-                icon="clipboard-outline"
-                title="Aún no hay atenciones"
-                message="Registra la primera solicitud del día y aparecerá aquí."
-                actionLabel="Crear solicitud"
+                illustration="orders"
+                title="Sin actividad reciente"
+                message="Registra una atención clínica o un pedido de tienda para verlo aquí."
+                actionLabel="Nueva solicitud"
                 onAction={() => openCreate()}
               />
             </View>
           ) : (
             <View style={{ gap: spacing.sm }}>
-              {latest.map((r) => (
-                <RequestCard key={r.id} request={r} onPress={openDetail} />
-              ))}
+              {recentActivity.map((item) =>
+                item.kind === 'request' ? (
+                  <RequestCard key={item.key} request={item.request} onPress={openDetail} />
+                ) : (
+                  <OrderCard key={item.key} order={item.order} onPress={openOrderDetail} />
+                ),
+              )}
             </View>
           )}
         </FadeInView>
@@ -560,7 +502,7 @@ export function HomeScreen({ navigation }: Props) {
                   compact
                   icon="checkmark-done-circle-outline"
                   title="Sin avisos pendientes"
-                  message="Los ingresos, atenciones en curso y altas médicas se registrarán en este panel."
+                  message="Los ingresos, atenciones en curso y pedidos se registrarán en este panel."
                 />
               ) : (
                 <View style={{ gap: spacing.sm, paddingVertical: spacing.xs }}>
@@ -627,13 +569,19 @@ export function HomeScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.lg, paddingBottom: spacing.xxl, maxWidth: 640, width: '100%', alignSelf: 'center' },
+  content: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+    maxWidth: 640,
+    width: '100%',
+    alignSelf: 'center',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     paddingTop: spacing.xs,
-    marginBottom: spacing.md + 4,
+    marginBottom: spacing.md + 2,
   },
   headerAvatar: {
     width: 44,
@@ -648,17 +596,16 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
     fontSize: 12.5,
     color: colors.textMuted,
-    marginBottom: 3,
+    marginBottom: 2,
   },
   name: {
     ...typography.display,
     fontSize: 22,
     lineHeight: 27,
-    marginTop: 2,
   },
 
   hero: {
-    height: 196,
+    height: 198,
     borderRadius: radius.xl,
     overflow: 'hidden',
     backgroundColor: colors.surfaceWarm,
@@ -666,15 +613,32 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     ...shadows.raised,
   },
-  heroImage: { position: 'absolute', right: -36, top: 0, bottom: 0, width: '112%', height: '100%' },
-  heroText: { flex: 1, padding: spacing.lg, justifyContent: 'space-between', maxWidth: '64%' },
+  heroImage: {
+    position: 'absolute',
+    right: -36,
+    top: 0,
+    bottom: 0,
+    width: '112%',
+    height: '100%',
+  },
+  heroText: {
+    flex: 1,
+    padding: spacing.md + 2,
+    justifyContent: 'space-between',
+    maxWidth: '68%',
+  },
+  heroTopPills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+  },
   heroPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 10,
+    gap: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: radius.pill,
   },
@@ -689,102 +653,72 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.text,
   },
-  heroScript: { ...typography.script, fontSize: 19, lineHeight: 20, color: colors.primaryDark },
-  heroTitle: { fontFamily: fonts.bold, fontSize: 19, lineHeight: 23, letterSpacing: -0.3, color: colors.text },
-  heroButton: { alignSelf: 'flex-start', minHeight: 40, borderRadius: radius.pill },
+  heroScript: {
+    ...typography.script,
+    fontSize: 19,
+    lineHeight: 20,
+    color: colors.primaryDark,
+  },
+  heroTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 19,
+    lineHeight: 23,
+    letterSpacing: -0.3,
+    color: colors.text,
+  },
+  heroButton: {
+    alignSelf: 'flex-start',
+    minHeight: 40,
+    borderRadius: radius.pill,
+  },
 
-  summarySection: {
+  summaryPairRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
     marginTop: spacing.md,
   },
-  summaryTopRow: {
+  summaryPairCard: {
+    flex: 1,
+    ...common.card,
+    padding: spacing.md,
+    gap: 4,
+  },
+  summaryPairTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    width: '100%',
+    marginBottom: 4,
   },
-
-  servicesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: spacing.sm,
-    marginTop: spacing.xs,
-    width: '100%',
-  },
-  serviceSquareCard: {
-    width: '48.5%',
-    minHeight: 118,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-    justifyContent: 'space-between',
-    ...shadows.soft,
-  },
-  serviceCardTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.xs,
-  },
-  serviceIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  summaryPairIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  serviceBadgePill: {
-    backgroundColor: colors.surfaceMuted,
-    paddingHorizontal: 8,
-    paddingVertical: 3.5,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignSelf: 'flex-start',
-  },
-  serviceBadgeEmergency: {
-    backgroundColor: colors.dangerSoft,
-    borderColor: colors.dangerBorder,
-  },
-  serviceBadgeText: {
-    fontFamily: fonts.semibold,
-    fontSize: 10.5,
-    color: colors.textSecondary,
-  },
-  serviceCardBottom: {
-    gap: 3,
-  },
-  serviceCardTitle: {
+  summaryPairCount: {
     fontFamily: fonts.bold,
-    fontSize: 14,
-    letterSpacing: -0.2,
+    fontSize: 24,
+    lineHeight: 28,
+    color: colors.text,
+    fontVariant: ['tabular-nums'],
+  },
+  summaryPairTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 13.5,
     color: colors.text,
   },
-  serviceFooterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 4,
-  },
-  serviceCardHint: {
+  summaryPairMeta: {
     fontFamily: fonts.regular,
-    fontSize: 11,
+    fontSize: 11.5,
     color: colors.textMuted,
-    flex: 1,
-  },
-  servicePriceText: {
-    fontFamily: fonts.bold,
-    fontSize: 12,
-    fontVariant: ['tabular-nums'],
   },
 
   alert: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     padding: spacing.md,
     borderRadius: radius.lg,
     backgroundColor: colors.dangerSoft,
@@ -794,100 +728,41 @@ const styles = StyleSheet.create({
   alertTitle: { fontFamily: fonts.bold, fontSize: 14, color: colors.danger },
   alertText: { fontFamily: fonts.medium, fontSize: 12, color: colors.dangerStrong },
 
-  section: { marginTop: spacing.lg },
-
-  summaryRow: {
+  quickRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'stretch',
-    width: '100%',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
   },
-  summaryCard: {
-    width: '31.5%',
-    borderRadius: radius.lg,
-    paddingHorizontal: 12,
+  quickCard: {
+    flex: 1,
+    ...common.card,
+    paddingHorizontal: spacing.md,
     paddingVertical: 12,
-    justifyContent: 'space-between',
-    borderWidth: 1.5,
-    gap: 6,
-    ...shadows.soft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
-  summaryIcon: {
-    width: 30,
-    height: 30,
+  quickIconBox: {
+    width: 34,
+    height: 34,
     borderRadius: 10,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
-  summaryCount: { fontFamily: fonts.bold, fontSize: 24, lineHeight: 28, fontVariant: ['tabular-nums'] },
-  summaryLabel: {
+  quickTitle: {
     fontFamily: fonts.bold,
-    fontSize: 12,
-    letterSpacing: -0.1,
+    fontSize: 13,
   },
-  breedBannerCard: {
-    ...common.card,
-    marginTop: spacing.sm,
-    padding: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.primarySoft,
-    borderColor: colors.primaryBorder,
-  },
-  breedBannerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  breedBannerTitle: {
-    fontFamily: fonts.bold,
-    fontSize: 14.5,
-    color: colors.primaryDark,
-  },
-  breedBannerSubtitle: {
+  quickHint: {
     fontFamily: fonts.regular,
-    fontSize: 12,
-    color: colors.textSecondary,
-    lineHeight: 16,
-  },
-  todayRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: spacing.sm },
-  emptyCard: { ...common.card },
-  petShopCard: {
-    ...common.card,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  petShopStatsRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
-  petShopStatBox: {
-    flex: 1,
-    borderRadius: radius.md,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-  },
-  petShopStatCount: {
-    fontFamily: fonts.bold,
-    fontSize: 20,
-    fontVariant: ['tabular-nums'],
-  },
-  petShopStatLabel: {
-    fontFamily: fonts.medium,
     fontSize: 11,
     color: colors.textSecondary,
-    marginTop: 2,
   },
-  petShopActionsRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
+
+  section: { marginTop: spacing.lg },
+  emptyCard: { ...common.card },
 
   modalOverlay: {
     flex: 1,

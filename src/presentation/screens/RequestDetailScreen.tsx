@@ -14,6 +14,7 @@ import {
   EmptyState,
   FadeInView,
   IconTile,
+  PawBackdrop,
   PetAvatar,
   PressableScale,
   PrimaryButton,
@@ -53,6 +54,7 @@ export function RequestDetailScreen({ navigation, route }: Props) {
   if (!request) {
     return (
       <SafeAreaView style={common.screen} edges={['top']}>
+        <PawBackdrop variant="detail" />
         <ScreenHeader title="Detalle de Atención" onBack={() => navigation.goBack()} />
         <EmptyState
           icon="alert-circle-outline"
@@ -141,6 +143,7 @@ export function RequestDetailScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={common.screen} edges={['top', 'bottom']}>
+      <PawBackdrop variant="detail" />
       <ScreenHeader
         title="Ficha del Paciente"
         onBack={() => navigation.goBack()}

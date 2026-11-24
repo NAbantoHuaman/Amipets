@@ -17,6 +17,7 @@ import {
   ConfirmDialog,
   FadeInView,
   IconTile,
+  PawBackdrop,
   PetAvatar,
   PressableScale,
   PrimaryButton,
@@ -167,6 +168,7 @@ export function SettingsScreen() {
 
   return (
     <SafeAreaView style={common.screen} edges={['top']}>
+      <PawBackdrop variant="detail" />
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}

@@ -26,6 +26,7 @@ import {
   FilterTabs,
   IconButton,
   OrderCategoryChip,
+  PawBackdrop,
   PressableScale,
   PrimaryButton,
   SearchBar,
@@ -250,6 +251,7 @@ export function CatalogScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={common.screen} edges={['top']}>
+      <PawBackdrop variant="list" />
       <View style={styles.container}>
         <FadeInView delay={30} distance={8}>
           <View style={styles.header}>

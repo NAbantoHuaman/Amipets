@@ -22,6 +22,7 @@ import {
 } from '../../infrastructure/services/breedsApiService';
 import {
   EmptyState,
+  PawBackdrop,
   PetAvatar,
   PressableScale,
   PrimaryButton,
@@ -205,6 +206,7 @@ export function BreedGuideScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={common.screen} edges={['top', 'bottom']}>
+      <PawBackdrop variant="list" />
       <ScreenHeader
         title="Guía de razas"
         onBack={() => navigation.goBack()}

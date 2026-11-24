@@ -1,9 +1,14 @@
 import React from 'react';
-import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Image, ImageSourcePropType, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { Species } from '../../domain/models/request';
 import { colors } from '../theme';
-import { SPECIES_META } from '../utils/requestMeta';
+
+const PET_IMAGES: Record<Species, ImageSourcePropType> = {
+  PERRO: require('../../../assets/pets/dog.jpg'),
+  GATO: require('../../../assets/pets/cat.jpg'),
+  CONEJO: require('../../../assets/pets/rabbit.jpg'),
+  OTRO: require('../../../assets/pets/other.jpg'),
+};
 
 interface Props {
   species?: Species;
@@ -22,14 +27,11 @@ export function PetAvatar({
   shape = 'rounded',
   selected,
   muted,
-  color,
   background,
   style,
 }: Props) {
-  const meta = SPECIES_META[species ?? 'OTRO'];
-  const borderRadius = shape === 'circle' ? size / 2 : size * 0.3;
-  const bgColor = background ?? meta.background;
-  const iconColor = color ?? meta.color;
+  const borderRadius = shape === 'circle' ? size / 2 : size * 0.28;
+  const source = PET_IMAGES[species ?? 'OTRO'];
 
   return (
     <View
@@ -37,22 +39,39 @@ export function PetAvatar({
       importantForAccessibility="no-hide-descendants"
       style={[
         styles.base,
-        { width: size, height: size, borderRadius, backgroundColor: bgColor },
+        {
+          width: size,
+          height: size,
+          borderRadius,
+          backgroundColor: background ?? colors.surfaceWarm,
+        },
         selected && styles.selected,
         muted && styles.muted,
         style,
       ]}
     >
-      <MaterialCommunityIcons name={meta.icon} size={size * 0.5} color={iconColor} />
+      <Image source={source} style={styles.image} resizeMode="cover" />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   base: {
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  selected: { borderWidth: 2.5, borderColor: colors.primary },
-  muted: { opacity: 0.6 },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  selected: {
+    borderWidth: 2.5,
+    borderColor: colors.primary,
+  },
+  muted: {
+    opacity: 0.65,
+  },
 });

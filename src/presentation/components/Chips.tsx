@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { OrderCategory, OrderStatus } from '../../domain/models/order';
 import { Priority, RequestStatus, ServiceType } from '../../domain/models/request';
-import { colors, fonts, radius, spacing } from '../theme';
+import { colors, fonts, radius } from '../theme';
 import { ORDER_CATEGORY_META, ORDER_STATUS_META } from '../utils/orderMeta';
 import { IconName, PRIORITY_META, SERVICE_META, STATUS_META } from '../utils/requestMeta';
 

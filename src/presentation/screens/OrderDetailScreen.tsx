@@ -15,6 +15,7 @@ import {
   IconTile,
   OrderCategoryChip,
   OrderStatusChip,
+  PawBackdrop,
   PetAvatar,
   PressableScale,
   PrimaryButton,
@@ -50,6 +51,7 @@ export function OrderDetailScreen({ navigation, route }: Props) {
   if (!order) {
     return (
       <SafeAreaView style={common.screen} edges={['top']}>
+        <PawBackdrop variant="detail" />
         <ScreenHeader title="Detalle del Pedido" onBack={() => navigation.goBack()} />
         <EmptyState
           icon="alert-circle-outline"
@@ -186,6 +188,7 @@ export function OrderDetailScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={common.screen} edges={['top', 'bottom']}>
+      <PawBackdrop variant="detail" />
       <ScreenHeader
         title="Detalle del Pedido"
         onBack={() => navigation.goBack()}

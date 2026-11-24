@@ -28,6 +28,11 @@ export function formatLongToday(date = new Date()): string {
   return `${WEEKDAYS[date.getDay()]}, ${date.getDate()} de ${longMonths[date.getMonth()]}`;
 }
 
+export function formatShortToday(date = new Date()): string {
+  const shortDays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  return `${shortDays[date.getDay()]}, ${date.getDate()} ${MONTHS[date.getMonth()]}`;
+}
+
 export function formatRelative(iso: string, now = new Date()): string {
   const diffMs = now.getTime() - new Date(iso).getTime();
   const minutes = Math.floor(diffMs / 60000);

@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { DefaultTheme, NavigationContainer, Theme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
+import { PawBackdrop } from '../components';
 import { BreedGuideScreen } from '../screens/BreedGuideScreen';
 import { CalendarScreen } from '../screens/CalendarScreen';
 import { CreateOrderScreen } from '../screens/CreateOrderScreen';
@@ -36,6 +37,7 @@ export function RootNavigator() {
   if (initializing) {
     return (
       <View style={styles.loadingScreen}>
+        <PawBackdrop variant="auth" />
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );

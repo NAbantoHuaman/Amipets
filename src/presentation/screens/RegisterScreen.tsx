@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { FadeInView, FormField, PressableScale, PrimaryButton } from '../components';
+import { FadeInView, FormField, PawBackdrop, PressableScale, PrimaryButton } from '../components';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { validateRegistrationInput } from '../../application/services/authService';
@@ -109,6 +109,7 @@ export function RegisterScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={common.screen} edges={['top', 'bottom']}>
+      <PawBackdrop variant="auth" />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

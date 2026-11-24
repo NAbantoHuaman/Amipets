@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { EmptyState, FadeInView, IconButton, PetAvatar, PressableScale, PriorityChip, PulseView, StatusChip } from '../components';
+import { EmptyState, FadeInView, IconButton, PawBackdrop, PetAvatar, PressableScale, PriorityChip, PulseView, StatusChip } from '../components';
 import { useRequests } from '../context/RequestsContext';
 import { RootStackParamList } from '../navigation/types';
 import { colors, common, fonts, radius, shadows, spacing, typography } from '../theme';
@@ -96,6 +96,7 @@ export function CalendarScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={common.screen} edges={['top']}>
+      <PawBackdrop variant="detail" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
         <FadeInView delay={40} distance={10}>
@@ -214,7 +215,7 @@ export function CalendarScreen({ navigation }: Props) {
 
             {scheduledList.length === 0 ? (
               <EmptyState
-                icon="calendar-outline"
+                illustration="clinic"
                 title={
                   requests.length === 0
                     ? 'Sin atenciones registradas'

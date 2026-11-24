@@ -6,13 +6,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { FadeInView, FormField, IconTile, PressableScale, PrimaryButton, PulseView } from '../components';
+import { FadeInView, FormField, IconTile, PawBackdrop, PressableScale, PrimaryButton, PulseView } from '../components';
 import { CLINIC_NAME, useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { RootStackParamList } from '../navigation/types';
@@ -68,6 +67,7 @@ export function WelcomeScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={common.screen} edges={['top', 'bottom']}>
+      <PawBackdrop variant="auth" />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

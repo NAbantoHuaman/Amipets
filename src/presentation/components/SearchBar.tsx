@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, HIT_SLOP, radius, shadows, spacing } from '../theme';
+import { colors, fonts, HIT_SLOP, radius, spacing } from '../theme';
 
 interface Props {
   value: string;

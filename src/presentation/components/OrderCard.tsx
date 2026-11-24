@@ -8,6 +8,7 @@ import { colors, common, fonts, radius, spacing } from '../theme';
 import { formatRelative } from '../utils/date';
 import { ORDER_CATEGORY_META } from '../utils/orderMeta';
 import { OrderStatusChip } from './Chips';
+import { PetAvatar } from './PetAvatar';
 import { PressableScale } from './PressableScale';
 
 interface Props {
@@ -37,6 +38,8 @@ function OrderCardBase({ order, onPress }: Props) {
         <View style={styles.imageBox}>
           <Image source={catalogAsset.image} style={styles.productImage} resizeMode="contain" />
         </View>
+      ) : order.especie ? (
+        <PetAvatar species={order.especie} size={54} shape="rounded" muted={isCanceled} />
       ) : (
         <View style={[styles.iconBox, { backgroundColor: cat.background }]}>
           <Ionicons name={cat.icon} size={24} color={cat.color} />

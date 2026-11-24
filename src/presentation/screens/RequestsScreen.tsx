@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { EmptyState, FadeInView, FilterOption, FilterTabs, PressableScale, RequestCard, SearchBar } from '../components';
+import { EmptyState, FadeInView, FilterOption, FilterTabs, PawBackdrop, PressableScale, RequestCard, SearchBar } from '../components';
 import { useRequests } from '../context/RequestsContext';
 import { Priority, PRIORITIES, RequestStatus, REQUEST_STATUSES } from '../../domain/models/request';
 import { RootStackParamList, TabParamList } from '../navigation/types';
@@ -79,7 +79,7 @@ export function RequestsScreen({ navigation, route }: Props) {
       return (
         <View style={styles.emptyContainer}>
           <EmptyState
-            icon="clipboard-outline"
+            illustration="clinic"
             title="No hay solicitudes registradas"
             message="Cuando llegue un paciente, registra su solicitud para hacer seguimiento de su atención."
             actionLabel="Crear solicitud"
@@ -107,6 +107,7 @@ export function RequestsScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={common.screen} edges={['top']}>
+      <PawBackdrop variant="list" />
       <View style={styles.container}>
         <FadeInView delay={30} distance={8}>
           <View style={styles.header}>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -11,6 +11,7 @@ import {
   FadeInView,
   FormField,
   IconTile,
+  PawBackdrop,
   PetAvatar,
   PressableScale,
   PrimaryButton,
@@ -19,7 +20,7 @@ import {
 import { fullName, useAuth } from '../context/AuthContext';
 import { useRequests } from '../context/RequestsContext';
 import { useToast } from '../context/ToastContext';
-import { PRIORITIES, Priority, RequestInput, SERVICE_TYPES, ServiceType, SPECIES, Species } from '../../domain/models/request';
+import { Priority, RequestInput, SERVICE_TYPES, ServiceType, SPECIES, Species } from '../../domain/models/request';
 import { RootStackParamList } from '../navigation/types';
 import { colors, common, fonts, radius, shadows, spacing, typography } from '../theme';
 import { formatDateTime } from '../utils/date';
@@ -172,6 +173,7 @@ export function CreateRequestScreen({ navigation, route }: Props) {
   if (isEdit && !existing) {
     return (
       <SafeAreaView style={common.screen}>
+        <PawBackdrop variant="detail" />
         <ScreenHeader title="Editar solicitud" onBack={() => navigation.goBack()} />
         <EmptyState
           icon="alert-circle-outline"
@@ -186,6 +188,7 @@ export function CreateRequestScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={common.screen} edges={['top', 'bottom']}>
+      <PawBackdrop variant="detail" />
       <ScreenHeader
         title={isEdit ? 'Editar solicitud' : 'Nueva solicitud'}
         onBack={() => navigation.goBack()}
