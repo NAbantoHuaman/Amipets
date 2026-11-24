@@ -1,5 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -46,30 +45,9 @@ type Props = CompositeScreenProps<
 
 export function HomeScreen({ navigation }: Props) {
   const { session } = useAuth();
-  const { requests, loading } = useRequests();
+  const { requests, loading, readIds, toggleNotificationRead, markNotificationsRead } = useRequests();
   const { orders } = useOrders();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [readIds, setReadIds] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    let active = true;
-    AsyncStorage.getItem('amipets_notif_read_v1')
-      .then((raw) => {
-        if (!active || !raw) return;
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object') {
-          setReadIds(parsed as Record<string, boolean>);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const persistReadIds = (next: Record<string, boolean>) => {
-    void AsyncStorage.setItem('amipets_notif_read_v1', JSON.stringify(next)).catch(() => {});
-  };
 
   const counts = useMemo(() => countByStatus(requests), [requests]);
   const orderCounts = useMemo(() => countOrdersByStatus(orders), [orders]);
@@ -210,20 +188,11 @@ export function HomeScreen({ navigation }: Props) {
   );
 
   const toggleRead = (id: string) => {
-    setReadIds((prev) => {
-      const next = { ...prev, [id]: !prev[id] };
-      persistReadIds(next);
-      return next;
-    });
+    toggleNotificationRead(id);
   };
 
   const markAllAsRead = () => {
-    const next: Record<string, boolean> = {};
-    for (const n of notifications) {
-      next[n.id] = true;
-    }
-    setReadIds(next);
-    persistReadIds(next);
+    markNotificationsRead(notifications.map((n) => n.id));
   };
 
   const openDetail = (id: string) => navigation.navigate('RequestDetail', { requestId: id });
@@ -512,11 +481,7 @@ export function HomeScreen({ navigation }: Props) {
                       <PressableScale
                         key={n.id}
                         onPress={() => {
-                          setReadIds((prev) => {
-                            const next = { ...prev, [n.id]: true };
-                            persistReadIds(next);
-                            return next;
-                          });
+                          markNotificationsRead([n.id]);
                           setShowNotifications(false);
                           if (n.kind === 'order') {
                             openOrderDetail(n.targetId);

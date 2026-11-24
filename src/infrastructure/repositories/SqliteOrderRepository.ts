@@ -92,38 +92,32 @@ export class SqliteOrderRepository implements IOrderRepository {
     writeFallbackOrders(this.memoryFallback);
   }
 
-  async getAll(userId?: string): Promise<PetOrder[]> {
+  async getAll(_userId?: string): Promise<PetOrder[]> {
     const db = await getOrdersDb();
     if (!db) {
       return this.loadFallback()
-        .filter((o) => !o.deletedAt && (!userId || o.userId === userId))
+        .filter((o) => !o.deletedAt)
         .sort(
           (a, b) => new Date(b.fechaRegistro).getTime() - new Date(a.fechaRegistro).getTime(),
         );
     }
 
-    const rows = userId
-      ? await db.getAllAsync<OrderRow>(
-          'SELECT * FROM orders WHERE deletedAt IS NULL AND userId = ? ORDER BY fechaRegistro DESC',
-          [userId],
-        )
-      : await db.getAllAsync<OrderRow>(
-          'SELECT * FROM orders WHERE deletedAt IS NULL ORDER BY fechaRegistro DESC',
-        );
+    const rows = await db.getAllAsync<OrderRow>(
+      'SELECT * FROM orders WHERE deletedAt IS NULL ORDER BY fechaRegistro DESC',
+    );
     return rows.map(mapRowToOrder);
   }
 
-  async getPendingSync(userId: string): Promise<PetOrder[]> {
+  async getPendingSync(_userId?: string): Promise<PetOrder[]> {
     const db = await getOrdersDb();
     if (!db) {
       return this.loadFallback().filter(
-        (o) => o.userId === userId && (!o.syncStatus || o.syncStatus === 'PENDING'),
+        (o) => !o.syncStatus || o.syncStatus === 'PENDING',
       );
     }
 
     const rows = await db.getAllAsync<OrderRow>(
-      "SELECT * FROM orders WHERE userId = ? AND (syncStatus IS NULL OR syncStatus = 'PENDING') ORDER BY fechaRegistro ASC",
-      [userId],
+      "SELECT * FROM orders WHERE syncStatus IS NULL OR syncStatus = 'PENDING' ORDER BY fechaRegistro ASC",
     );
     return rows.map(mapRowToOrder);
   }
@@ -414,6 +408,20 @@ export class SqliteOrderRepository implements IOrderRepository {
         null,
       ],
     );
+  }
+
+  async reconcileRemoteSnapshot(_userId: string, remoteOrders: PetOrder[]): Promise<void> {
+    const remoteIds = new Set(remoteOrders.map((o) => o.id));
+    for (const remote of remoteOrders) {
+      await this.upsertFromRemote(remote);
+    }
+
+    const localActive = await this.getAll();
+    for (const local of localActive) {
+      if (local.syncStatus === 'SYNCED' && !remoteIds.has(local.id)) {
+        await this.hardDelete(local.id);
+      }
+    }
   }
 
   async delete(id: string): Promise<boolean> {

@@ -13,6 +13,7 @@ export { PrimaryButton } from './PrimaryButton';
 export { PulseView } from './PulseView';
 export { Chip, OrderCategoryChip, OrderStatusChip, PriorityChip, ServiceChip, StatusChip } from './Chips';
 export { OrderCard } from './OrderCard';
+export { PaymentReceiptCard, PaymentReceiptModal } from './PaymentReceiptCard';
 export { PawBackdrop } from './PawBackdrop';
 export type { PawBackdropVariant } from './PawBackdrop';
 export { RequestCard } from './RequestCard';

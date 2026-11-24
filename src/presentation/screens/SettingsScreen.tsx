@@ -1,5 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -51,7 +50,17 @@ const SERVICE_PRICE_METADATA: Omit<ServicePriceItem, 'price'>[] = [
 
 export function SettingsScreen() {
   const { session, isAdmin, staffList, signOut } = useAuth();
-  const { requests, servicePrices, updateServicePrice, clearAll } = useRequests();
+  const {
+    requests,
+    servicePrices,
+    prefs,
+    syncing: syncingRequests,
+    pendingSyncCount: pendingRequestsCount,
+    syncRequestsNow,
+    updateServicePrice,
+    updatePref,
+    clearAll,
+  } = useRequests();
   const { orders, isOnline, syncing, pendingSyncCount, syncNow, clearAllOrders } = useOrders();
   const { showToast } = useToast();
 
@@ -70,39 +79,11 @@ export function SettingsScreen() {
   const [editingService, setEditingService] = useState<ServicePriceItem | null>(null);
   const [newPriceText, setNewPriceText] = useState('');
 
-  const [notifyUrgent, setNotifyUrgent] = useState(true);
-  const [soundAlerts, setSoundAlerts] = useState(true);
-  const [vaccineReminders, setVaccineReminders] = useState(true);
+  const { notifyUrgent, soundAlerts, vaccineReminders } = prefs;
 
-  useEffect(() => {
-    let active = true;
-    AsyncStorage.getItem('amipets_settings_prefs_v1')
-      .then((raw) => {
-        if (!active || !raw) return;
-        const parsed = JSON.parse(raw);
-        if (typeof parsed.notifyUrgent === 'boolean') setNotifyUrgent(parsed.notifyUrgent);
-        if (typeof parsed.soundAlerts === 'boolean') setSoundAlerts(parsed.soundAlerts);
-        if (typeof parsed.vaccineReminders === 'boolean') setVaccineReminders(parsed.vaccineReminders);
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const updatePref = (
-    key: 'notifyUrgent' | 'soundAlerts' | 'vaccineReminders',
-    value: boolean,
-  ) => {
-    const next = {
-      notifyUrgent: key === 'notifyUrgent' ? value : notifyUrgent,
-      soundAlerts: key === 'soundAlerts' ? value : soundAlerts,
-      vaccineReminders: key === 'vaccineReminders' ? value : vaccineReminders,
-    };
-    if (key === 'notifyUrgent') setNotifyUrgent(value);
-    if (key === 'soundAlerts') setSoundAlerts(value);
-    if (key === 'vaccineReminders') setVaccineReminders(value);
-    void AsyncStorage.setItem('amipets_settings_prefs_v1', JSON.stringify(next)).catch(() => {});
+  const isAnySyncing = syncing || syncingRequests;
+  const handleSyncAll = async () => {
+    await Promise.all([syncNow(false), syncRequestsNow(true)]);
   };
 
   const handleLogout = () => {
@@ -405,8 +386,29 @@ export function SettingsScreen() {
 
         <FadeInView delay={270} distance={10}>
           <View style={styles.section}>
-            <SectionHeader title="Datos del dispositivo" />
+            <SectionHeader title="Sincronización de cuenta" />
             <View style={styles.card}>
+              <View style={styles.infoRowItem}>
+                <IconTile icon="medkit-outline" color={colors.sky} background={colors.skySoft} size={38} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.infoRowTitle}>Solicitudes y ajustes</Text>
+                  <Text style={styles.infoRowSubtitle}>
+                    {!isOnline
+                      ? 'Sin conexión · Guardados en el dispositivo'
+                      : pendingRequestsCount > 0
+                      ? `${pendingRequestsCount} ${
+                          pendingRequestsCount === 1 ? 'pendiente de envío' : 'pendientes de envío'
+                        }`
+                      : 'Respaldados en la nube'}
+                  </Text>
+                </View>
+                <View style={styles.pricePill}>
+                  <Text style={styles.serviceRowPrice}>{requests.length}</Text>
+                </View>
+              </View>
+
+              <View style={styles.cardDivider} />
+
               <View style={styles.infoRowItem}>
                 <IconTile icon="folder-outline" color={colors.sage} background={colors.sageSoft} size={38} />
                 <View style={{ flex: 1 }}>
@@ -418,7 +420,7 @@ export function SettingsScreen() {
                       ? `${pendingSyncCount} ${
                           pendingSyncCount === 1 ? 'pendiente de envío' : 'pendientes de envío'
                         }`
-                      : 'Todos los pedidos sincronizados'}
+                      : 'Respaldados en la nube'}
                   </Text>
                 </View>
                 <View style={styles.pricePill}>
@@ -431,9 +433,9 @@ export function SettingsScreen() {
                   <View style={styles.cardDivider} />
                   <View style={{ paddingTop: spacing.xs }}>
                     <PrimaryButton
-                      title={syncing ? 'Sincronizando...' : 'Sincronizar ahora'}
-                      onPress={() => syncNow(false)}
-                      loading={syncing}
+                      title={isAnySyncing ? 'Sincronizando...' : 'Sincronizar todo ahora'}
+                      onPress={handleSyncAll}
+                      loading={isAnySyncing}
                       variant="secondary"
                       icon="sync-outline"
                       trailingIcon={null}

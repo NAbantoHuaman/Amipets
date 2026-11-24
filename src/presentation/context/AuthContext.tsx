@@ -15,15 +15,19 @@ import {
   updateProfile,
   User as FirebaseUser,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, setDoc, Unsubscribe } from 'firebase/firestore';
 import {
+  buildSessionFromUser,
+  buildUnifiedRoleFields,
   CLINIC_NAME,
   fullName,
+  isDesignatedAdminAccount,
   mapFirebaseAuthError,
   ROLE_CONFIGS,
   shortGreetingName,
 } from '../../application/services/authService';
 import { RegisterUserInput, Session, User, UserRole } from '../../domain/models/user';
+import { sqliteUserRepository } from '../../infrastructure/repositories/SqliteUserRepository';
 import { firebaseAuth, firestoreDb } from '../../infrastructure/services/firebaseConfig';
 
 export { CLINIC_NAME, fullName, shortGreetingName };
@@ -45,42 +49,32 @@ export interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const VALID_ROLES: UserRole[] = ['ADMIN', 'VETERINARIAN', 'RECEPTIONIST', 'ASSISTANT'];
 
-function buildFallbackSession(fbUser: FirebaseUser): Session {
-  const email = (fbUser.email ?? '').trim().toLowerCase();
-  const isEmailAdmin = email.startsWith('admin@');
-  const roleCode: UserRole = isEmailAdmin ? 'ADMIN' : 'RECEPTIONIST';
-  const cfg = ROLE_CONFIGS[roleCode];
-  const fallbackName =
-    fbUser.displayName?.trim() ||
-    (isEmailAdmin ? 'Carlos Mendoza' : email.split('@')[0] || 'Colaborador');
-
-  return {
-    uid: fbUser.uid,
-    email,
-    userName: email,
-    displayName: fallbackName,
-    title: cfg.defaultTitle,
-    clinicName: CLINIC_NAME,
-    role: cfg.defaultRoleDescription,
-    roleCode,
-    cmpv: isEmailAdmin ? 'C.M.V.P. 8421 · Dirección Médica' : 'Recepción & Ventas',
-    shift: 'Turno Completo (08:00 - 20:00)',
-  };
+function isValidUserRole(value: unknown): value is UserRole {
+  return typeof value === 'string' && VALID_ROLES.includes(value as UserRole);
 }
 
-function sessionToStaffUser(s: Session): User {
+function buildFallbackUser(fbUser: FirebaseUser): User {
+  const email = (fbUser.email ?? '').trim().toLowerCase();
+  const roleCode: UserRole = isDesignatedAdminAccount(email, fbUser.uid) ? 'ADMIN' : 'RECEPTIONIST';
+  const shiftText = 'Turno Completo (08:00 - 20:00)';
+  const roleFields = buildUnifiedRoleFields(roleCode, shiftText);
+  const fallbackName =
+    fbUser.displayName?.trim() ||
+    (roleCode === 'ADMIN' ? 'Carlos Herrera' : email.split('@')[0] || 'Colaborador');
+
   return {
-    id: s.uid,
-    userName: s.email || s.userName,
-    email: s.email,
-    displayName: s.displayName,
-    role: s.roleCode ?? 'RECEPTIONIST',
-    roleLabel: s.role ?? ROLE_CONFIGS.RECEPTIONIST.defaultRoleDescription,
-    title: s.title,
-    clinicName: s.clinicName,
-    cmpv: s.cmpv,
-    shift: s.shift,
+    id: fbUser.uid,
+    userName: email,
+    email,
+    displayName: fallbackName,
+    role: roleFields.role,
+    roleLabel: roleFields.roleLabel,
+    title: roleFields.title,
+    clinicName: roleFields.clinicName,
+    cmpv: roleFields.cmpv,
+    shift: roleFields.shift,
     createdAt: new Date().toISOString(),
   };
 }
@@ -90,8 +84,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [initializing, setInitializing] = useState(true);
   const [staffList, setStaffList] = useState<User[]>([]);
 
+  const applyUnifiedUser = useCallback((user: User) => {
+    setSession(buildSessionFromUser(user));
+    void sqliteUserRepository
+      .upsert(user)
+      .then(() => sqliteUserRepository.getAll())
+      .then((allStaff) => {
+        if (allStaff.length > 0) setStaffList(allStaff);
+        else setStaffList([user]);
+      })
+      .catch(() => {
+        setStaffList([user]);
+      });
+  }, []);
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(firebaseAuth, async (fbUser) => {
+    let profileUnsub: Unsubscribe | null = null;
+    let rosterUnsub: Unsubscribe | null = null;
+
+    const unsubscribeAuth = onAuthStateChanged(firebaseAuth, async (fbUser) => {
+      if (profileUnsub) {
+        profileUnsub();
+        profileUnsub = null;
+      }
+      if (rosterUnsub) {
+        rosterUnsub();
+        rosterUnsub = null;
+      }
+
       if (!fbUser) {
         setSession(null);
         setStaffList([]);
@@ -99,52 +119,208 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const base = buildFallbackSession(fbUser);
-      setSession(base);
-      setStaffList([sessionToStaffUser(base)]);
+      const cachedLocal = await sqliteUserRepository.getByUid(fbUser.uid).catch(() => undefined);
+      const fallbackUser = cachedLocal ?? buildFallbackUser(fbUser);
+
+      // Ensure designated admin is immediately reflected even before remote snapshot arrives
+      if (isDesignatedAdminAccount(fbUser.email, fbUser.uid) && fallbackUser.role !== 'ADMIN') {
+        const healedFields = buildUnifiedRoleFields('ADMIN', fallbackUser.shift || 'Turno Completo (08:00 - 20:00)');
+        applyUnifiedUser({
+          ...fallbackUser,
+          ...healedFields,
+        });
+      } else {
+        applyUnifiedUser(fallbackUser);
+      }
       setInitializing(false);
 
-      try {
-        const snap = await getDoc(doc(firestoreDb, 'users', fbUser.uid));
-        if (snap.exists()) {
-          const data = snap.data() as Record<string, any>;
-          const roleCode: UserRole =
-            data.role === 'ADMIN' || data.role === 'RECEPTIONIST'
-              ? data.role
-              : base.roleCode ?? 'RECEPTIONIST';
-          const cfg = ROLE_CONFIGS[roleCode];
+      const userDocRef = doc(firestoreDb, 'users', fbUser.uid);
+      profileUnsub = onSnapshot(
+        userDocRef,
+        (snap) => {
+          const cleanEmail = (fbUser.email ?? '').trim().toLowerCase();
+          const mustBeAdmin = isDesignatedAdminAccount(cleanEmail, fbUser.uid);
 
-          const enriched: Session = {
-            uid: fbUser.uid,
-            email: typeof data.email === 'string' && data.email ? data.email : base.email,
-            userName: typeof data.email === 'string' && data.email ? data.email : base.email,
-            displayName:
-              typeof data.displayName === 'string' && data.displayName
-                ? data.displayName
-                : base.displayName,
-            title: typeof data.title === 'string' && data.title ? data.title : cfg.defaultTitle,
+          if (!snap.exists()) {
+            const baseUser = buildFallbackUser(fbUser);
+            applyUnifiedUser(baseUser);
+            const now = new Date().toISOString();
+            void setDoc(
+              userDocRef,
+              {
+                displayName: baseUser.displayName,
+                email: cleanEmail,
+                role: baseUser.role,
+                roleLabel: baseUser.roleLabel,
+                title: baseUser.title,
+                clinicName: baseUser.clinicName,
+                cmpv: baseUser.cmpv ?? '',
+                shift: baseUser.shift ?? 'Turno Completo (08:00 - 20:00)',
+                createdAt: baseUser.createdAt,
+                updatedAt: now,
+              },
+              { merge: true },
+            ).catch(() => {});
+            return;
+          }
+
+          const data = snap.data() as Record<string, any>;
+          const storedRole: UserRole = isValidUserRole(data.role) ? data.role : 'RECEPTIONIST';
+          const effectiveRole: UserRole = mustBeAdmin ? 'ADMIN' : storedRole;
+          const cfg = ROLE_CONFIGS[effectiveRole];
+          const shiftText =
+            typeof data.shift === 'string' && data.shift
+              ? data.shift
+              : fallbackUser.shift || 'Turno Completo (08:00 - 20:00)';
+          const expectedAdminFields = buildUnifiedRoleFields('ADMIN', shiftText);
+
+          // Auto-reconcile Firestore if designated admin was previously stored as RECEPTIONIST
+          const needsAdminFirestoreHeal =
+            mustBeAdmin &&
+            (data.role !== 'ADMIN' ||
+              data.title !== expectedAdminFields.title ||
+              data.roleLabel !== expectedAdminFields.roleLabel);
+
+          const displayName =
+            typeof data.displayName === 'string' && data.displayName
+              ? data.displayName
+              : fallbackUser.displayName;
+          const email =
+            typeof data.email === 'string' && data.email ? data.email : cleanEmail;
+          const createdAt =
+            typeof data.createdAt === 'string' && data.createdAt
+              ? data.createdAt
+              : fallbackUser.createdAt;
+
+          const unifiedUser: User = {
+            id: fbUser.uid,
+            userName: email,
+            email,
+            displayName,
+            role: effectiveRole,
+            roleLabel: needsAdminFirestoreHeal
+              ? expectedAdminFields.roleLabel
+              : typeof data.roleLabel === 'string' && data.roleLabel && data.role === effectiveRole
+              ? data.roleLabel
+              : cfg.defaultRoleDescription,
+            title: needsAdminFirestoreHeal
+              ? expectedAdminFields.title
+              : typeof data.title === 'string' && data.title && data.role === effectiveRole
+              ? data.title
+              : cfg.defaultTitle,
             clinicName:
               typeof data.clinicName === 'string' && data.clinicName
                 ? data.clinicName
                 : CLINIC_NAME,
-            role:
-              typeof data.roleLabel === 'string' && data.roleLabel
-                ? data.roleLabel
-                : cfg.defaultRoleDescription,
-            roleCode,
-            cmpv: typeof data.cmpv === 'string' ? data.cmpv : base.cmpv,
-            shift: typeof data.shift === 'string' ? data.shift : base.shift,
+            cmpv: needsAdminFirestoreHeal
+              ? expectedAdminFields.cmpv
+              : typeof data.cmpv === 'string' && data.cmpv && data.role === effectiveRole
+              ? data.cmpv
+              : buildUnifiedRoleFields(effectiveRole, shiftText).cmpv,
+            shift: shiftText,
+            createdAt,
           };
-          setSession(enriched);
-          setStaffList([sessionToStaffUser(enriched)]);
-        }
-      } catch {
-        // Offline or unreachable Firestore: keep fallback session smoothly
-      }
+
+          applyUnifiedUser(unifiedUser);
+
+          if (needsAdminFirestoreHeal) {
+            void setDoc(
+              userDocRef,
+              {
+                displayName: unifiedUser.displayName,
+                email: unifiedUser.email,
+                role: 'ADMIN',
+                roleLabel: expectedAdminFields.roleLabel,
+                title: expectedAdminFields.title,
+                clinicName: unifiedUser.clinicName,
+                cmpv: expectedAdminFields.cmpv,
+                shift: shiftText,
+                createdAt,
+                updatedAt: new Date().toISOString(),
+              },
+              { merge: true },
+            ).catch(() => {});
+          }
+        },
+        () => {
+          // Offline or unreachable Firestore: keep SQLite / fallback user smoothly
+        },
+      );
+
+      rosterUnsub = onSnapshot(
+        collection(firestoreDb, 'users'),
+        (snapshot) => {
+          const allUsers: User[] = snapshot.docs.map((d) => {
+            const raw = d.data() as Record<string, any>;
+            const email = String(raw.email ?? '').trim().toLowerCase();
+            const isDesignated = isDesignatedAdminAccount(email, d.id);
+            const role: UserRole = isDesignated
+              ? 'ADMIN'
+              : isValidUserRole(raw.role)
+              ? raw.role
+              : 'RECEPTIONIST';
+            const shiftText =
+              typeof raw.shift === 'string' && raw.shift
+                ? raw.shift
+                : 'Turno Completo (08:00 - 20:00)';
+            const defaults = buildUnifiedRoleFields(role, shiftText);
+
+            return {
+              id: d.id,
+              userName: email || d.id,
+              email,
+              displayName: String(raw.displayName ?? (email.split('@')[0] || 'Colaborador')),
+              role,
+              roleLabel:
+                isDesignated
+                  ? defaults.roleLabel
+                  : typeof raw.roleLabel === 'string' && raw.roleLabel
+                  ? raw.roleLabel
+                  : defaults.roleLabel,
+              title:
+                isDesignated
+                  ? defaults.title
+                  : typeof raw.title === 'string' && raw.title
+                  ? raw.title
+                  : defaults.title,
+              clinicName:
+                typeof raw.clinicName === 'string' && raw.clinicName
+                  ? raw.clinicName
+                  : CLINIC_NAME,
+              cmpv:
+                isDesignated
+                  ? defaults.cmpv
+                  : typeof raw.cmpv === 'string' && raw.cmpv
+                  ? raw.cmpv
+                  : defaults.cmpv,
+              shift: shiftText,
+              createdAt:
+                typeof raw.createdAt === 'string' && raw.createdAt
+                  ? raw.createdAt
+                  : new Date().toISOString(),
+            };
+          });
+
+          if (allUsers.length > 0) {
+            void sqliteUserRepository
+              .replaceAll(allUsers)
+              .then(() => sqliteUserRepository.getAll())
+              .then((sorted) => setStaffList(sorted))
+              .catch(() => setStaffList(allUsers));
+          }
+        },
+        () => {
+          // Offline fallback uses SQLite cached staff list
+        },
+      );
     });
 
-    return unsubscribe;
-  }, []);
+    return () => {
+      if (profileUnsub) profileUnsub();
+      if (rosterUnsub) rosterUnsub();
+      unsubscribeAuth();
+    };
+  }, [applyUnifiedUser]);
 
   const signIn = useCallback(
     async (email: string, password: string): Promise<AuthActionResult> => {
@@ -162,7 +338,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const cleanEmail = input.email.trim().toLowerCase();
     const cleanName = input.displayName.trim();
     const shiftText = input.shift?.trim() || 'Turno Completo (08:00 - 20:00)';
-    const cfg = ROLE_CONFIGS.RECEPTIONIST;
 
     try {
       const cred = await createUserWithEmailAndPassword(
@@ -173,17 +348,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       await updateProfile(cred.user, { displayName: cleanName });
 
+      const roleCode: UserRole = isDesignatedAdminAccount(cleanEmail, cred.user.uid)
+        ? 'ADMIN'
+        : 'RECEPTIONIST';
+      const roleFields = buildUnifiedRoleFields(roleCode, shiftText);
+      const now = new Date().toISOString();
+
       const profileDoc = {
         displayName: cleanName,
         email: cleanEmail,
-        role: 'RECEPTIONIST',
-        roleLabel: cfg.defaultRoleDescription,
-        title: cfg.defaultTitle,
-        clinicName: CLINIC_NAME,
-        cmpv: `Recepción · ${shiftText}`,
-        shift: shiftText,
-        createdAt: new Date().toISOString(),
+        role: roleFields.role,
+        roleLabel: roleFields.roleLabel,
+        title: roleFields.title,
+        clinicName: roleFields.clinicName,
+        cmpv: roleFields.cmpv,
+        shift: roleFields.shift,
+        createdAt: now,
+        updatedAt: now,
       };
+
+      const newUser: User = {
+        id: cred.user.uid,
+        userName: cleanEmail,
+        email: cleanEmail,
+        displayName: cleanName,
+        role: roleFields.role,
+        roleLabel: roleFields.roleLabel,
+        title: roleFields.title,
+        clinicName: roleFields.clinicName,
+        cmpv: roleFields.cmpv,
+        shift: roleFields.shift,
+        createdAt: now,
+      };
+
+      applyUnifiedUser(newUser);
 
       try {
         await setDoc(doc(firestoreDb, 'users', cred.user.uid), profileDoc);
@@ -191,26 +389,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Keep registration working if Firestore write hits temporary offline state
       }
 
-      const nextSession: Session = {
-        uid: cred.user.uid,
-        email: cleanEmail,
-        userName: cleanEmail,
-        displayName: cleanName,
-        title: profileDoc.title,
-        clinicName: profileDoc.clinicName,
-        role: profileDoc.roleLabel,
-        roleCode: 'RECEPTIONIST',
-        cmpv: profileDoc.cmpv,
-        shift: profileDoc.shift,
-      };
-      setSession(nextSession);
-      setStaffList([sessionToStaffUser(nextSession)]);
-
       return { success: true };
     } catch (err: any) {
       return { success: false, error: mapFirebaseAuthError(err?.code) };
     }
-  }, []);
+  }, [applyUnifiedUser]);
 
   const signOut = useCallback(async () => {
     await firebaseSignOut(firebaseAuth);
@@ -218,10 +401,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStaffList([]);
   }, []);
 
-  const isAdmin = Boolean(
-    session &&
-      (session.roleCode === 'ADMIN' || session.email.toLowerCase().startsWith('admin@')),
-  );
+  const isAdmin = Boolean(session && session.roleCode === 'ADMIN');
 
   const value = useMemo<AuthContextValue>(
     () => ({ session, initializing, isAdmin, staffList, signIn, signUp, signOut }),

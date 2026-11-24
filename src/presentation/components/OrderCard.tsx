@@ -84,6 +84,15 @@ function OrderCardBase({ order, onPress }: Props) {
           </View>
           <OrderStatusChip status={order.estado} />
         </View>
+
+        {order.registradoPor ? (
+          <View style={styles.authorTag}>
+            <Ionicons name="id-card-outline" size={11} color={colors.primaryDark} />
+            <Text style={styles.authorTagText} numberOfLines={1}>
+              Atendido por: {order.registradoPor}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
@@ -185,5 +194,21 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: 11,
     color: colors.textMuted,
+  },
+  authorTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    marginTop: 3,
+  },
+  authorTagText: {
+    fontFamily: fonts.medium,
+    fontSize: 10.5,
+    color: colors.primaryDark,
   },
 });

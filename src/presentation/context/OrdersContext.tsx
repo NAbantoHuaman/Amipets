@@ -13,7 +13,10 @@ import { fullName } from '../../application/services/authService';
 import { OrderChanges, OrderInput, OrderStatus, PetOrder } from '../../domain/models/order';
 import { isUsingNativeSqlite } from '../../infrastructure/database/sqlite';
 import { sqliteOrderRepository } from '../../infrastructure/repositories/SqliteOrderRepository';
-import { syncUserOrders } from '../../infrastructure/services/firebaseOrderSyncService';
+import {
+  subscribeUserOrdersSnapshot,
+  syncUserOrders,
+} from '../../infrastructure/services/firebaseOrderSyncService';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 
@@ -173,6 +176,20 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         void syncNow(true);
       }
     });
+
+    if (!userId) return;
+
+    const unsubscribeRemote = subscribeUserOrdersSnapshot(userId, (remoteOrders) => {
+      if (syncingRef.current) return;
+      sqliteOrderRepository
+        .reconcileRemoteSnapshot(userId, remoteOrders)
+        .then(() => loadLocalOrders(userId))
+        .catch(() => {});
+    });
+
+    return () => {
+      unsubscribeRemote();
+    };
   }, [userId, loadLocalOrders, syncNow]);
 
   useEffect(() => {

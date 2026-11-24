@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -22,10 +22,30 @@ type StatusFilter = RequestStatus | 'TODOS';
 type PriorityFilter = Priority | 'TODAS';
 
 export function RequestsScreen({ navigation, route }: Props) {
-  const { requests, loading } = useRequests();
+  const {
+    requests,
+    loading,
+    isOnline,
+    pendingSyncCount,
+    refreshRequests,
+    syncRequestsNow,
+  } = useRequests();
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<StatusFilter>('TODOS');
   const [priority, setPriority] = useState<PriorityFilter>('TODAS');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshRequests();
+      if (isOnline) {
+        await syncRequestsNow(false);
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     const params = route.params;
@@ -144,6 +164,15 @@ export function RequestsScreen({ navigation, route }: Props) {
           </View>
         </FadeInView>
 
+        {!isOnline && (
+          <View style={styles.offlineBanner}>
+            <Ionicons name="cloud-offline-outline" size={15} color={colors.pending} />
+            <Text style={styles.offlineBannerText}>
+              Sin conexión · Guardado local, se sincronizará al volver la red
+            </Text>
+          </View>
+        )}
+
         <FadeInView delay={70} distance={10}>
           <SearchBar
             value={query}
@@ -182,6 +211,7 @@ export function RequestsScreen({ navigation, route }: Props) {
               <View style={styles.resultsRow}>
                 <Text style={typography.captionStrong}>
                   {visible.length} {visible.length === 1 ? 'solicitud' : 'solicitudes'}
+                  {pendingSyncCount > 0 ? ` · ${pendingSyncCount} por respaldar` : ''}
                 </Text>
                 <View style={styles.sortHint}>
                   <Ionicons name="swap-vertical" size={12} color={colors.textMuted} />
@@ -189,6 +219,14 @@ export function RequestsScreen({ navigation, route }: Props) {
                 </View>
               </View>
             ) : undefined
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
           }
           ListEmptyComponent={renderEmpty}
           ListFooterComponent={
@@ -256,6 +294,22 @@ const styles = StyleSheet.create({
   },
   addLabel: { fontFamily: fonts.medium, fontSize: 14, color: colors.text },
   filters: { marginTop: spacing.md },
+  offlineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.pendingSoft,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 8,
+    borderRadius: radius.md,
+    marginBottom: spacing.sm,
+  },
+  offlineBannerText: {
+    flex: 1,
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    color: colors.pending,
+  },
   list: { paddingTop: spacing.md, paddingBottom: spacing.xxl, flexGrow: 1 },
   listEmpty: { flexGrow: 1, justifyContent: 'center' },
   emptyContainer: {

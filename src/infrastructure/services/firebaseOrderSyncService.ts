@@ -3,9 +3,9 @@ import {
   deleteDoc,
   doc,
   getDocs,
-  query,
+  onSnapshot,
   setDoc,
-  where,
+  Unsubscribe,
 } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { OrderCategory, OrderStatus, PetOrder } from '../../domain/models/order';
@@ -93,15 +93,14 @@ export async function deleteOrderFromFirestore(orderId: string): Promise<void> {
   await deleteDoc(doc(firestoreDb, 'orders', orderId));
 }
 
-export async function fetchUserOrdersFromFirestore(userId: string): Promise<PetOrder[]> {
-  const q = query(collection(firestoreDb, 'orders'), where('userId', '==', userId));
-  const snapshot = await getDocs(q);
+export async function fetchUserOrdersFromFirestore(fallbackUid: string): Promise<PetOrder[]> {
+  const snapshot = await getDocs(collection(firestoreDb, 'orders'));
 
   return snapshot.docs.map((docSnap) => {
     const data = docSnap.data() as Record<string, any>;
     return {
       id: typeof data.id === 'string' && data.id ? data.id : docSnap.id,
-      userId: data.userId ?? userId,
+      userId: data.userId ?? fallbackUid,
       clienteNombre: String(data.clienteNombre ?? ''),
       telefono: data.telefono ?? undefined,
       mascotaNombre: data.mascotaNombre ?? undefined,
@@ -162,7 +161,10 @@ export async function syncUserOrders(userId: string): Promise<SyncOrdersSummary>
       }
 
       const syncedAt = new Date().toISOString();
-      await pushOrderToFirestore({ ...order, comprobanteUrl: nextUrl }, syncedAt);
+      await pushOrderToFirestore(
+        { ...order, userId: order.userId || userId, comprobanteUrl: nextUrl },
+        syncedAt,
+      );
       await sqliteOrderRepository.markSynced(order.id, syncedAt, nextUrl);
       summary.pushed += 1;
     } catch {
@@ -172,15 +174,56 @@ export async function syncUserOrders(userId: string): Promise<SyncOrdersSummary>
 
   try {
     const remoteOrders = await fetchUserOrdersFromFirestore(userId);
-    for (const remote of remoteOrders) {
-      await sqliteOrderRepository.upsertFromRemote(remote);
-      summary.pulled += 1;
-    }
+    await sqliteOrderRepository.reconcileRemoteSnapshot(userId, remoteOrders);
+    summary.pulled = remoteOrders.length;
   } catch {
     summary.failed += 1;
   }
 
   return summary;
+}
+
+export function subscribeUserOrdersSnapshot(
+  fallbackUid: string,
+  onRemoteOrders: (orders: PetOrder[]) => void,
+): Unsubscribe {
+  return onSnapshot(
+    collection(firestoreDb, 'orders'),
+    (snapshot) => {
+      if (snapshot.metadata.hasPendingWrites) return;
+      const items = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data() as Record<string, any>;
+        return {
+          id: typeof data.id === 'string' && data.id ? data.id : docSnap.id,
+          userId: data.userId ?? fallbackUid,
+          clienteNombre: String(data.clienteNombre ?? ''),
+          telefono: data.telefono ?? undefined,
+          mascotaNombre: data.mascotaNombre ?? undefined,
+          especie: (data.especie as Species | null) ?? undefined,
+          productoId: typeof data.productoId === 'number' ? Number(data.productoId) : undefined,
+          marca: data.marca ?? undefined,
+          sku: data.sku ?? undefined,
+          categoria: (data.categoria as OrderCategory) ?? 'ACCESORIOS',
+          producto: String(data.producto ?? ''),
+          cantidad: Number(data.cantidad ?? 1),
+          precio: Number(data.precio ?? 0),
+          notas: data.notas ?? undefined,
+          estado: (data.estado as OrderStatus) ?? 'PENDIENTE',
+          fechaRegistro: String(data.fechaRegistro ?? new Date().toISOString()),
+          registradoPor: data.registradoPor ?? undefined,
+          registradoPorUsuario: data.registradoPorUsuario ?? undefined,
+          comprobanteUrl: data.comprobanteUrl ?? undefined,
+          updatedAt: data.updatedAt ?? undefined,
+          syncedAt: data.syncedAt ?? undefined,
+          syncStatus: 'SYNCED' as const,
+        };
+      });
+      onRemoteOrders(items);
+    },
+    () => {
+      // Ignore transient offline listener errors
+    },
+  );
 }
 
 export const firebaseOrderSyncService = {
@@ -189,4 +232,5 @@ export const firebaseOrderSyncService = {
   deleteOrderFromFirestore,
   fetchUserOrdersFromFirestore,
   syncUserOrders,
+  subscribeUserOrdersSnapshot,
 };

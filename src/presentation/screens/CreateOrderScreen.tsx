@@ -10,7 +10,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NavigationAction, usePreventRemove } from '@react-navigation/native';
@@ -21,6 +20,13 @@ import {
   orderShortCode,
   validateOrderInput,
 } from '../../application/services/orderService';
+import {
+  buildDigitalReceiptUri,
+  generateReceiptCode,
+  parseDigitalReceiptUri,
+  PAYMENT_METHODS,
+  PaymentMethod,
+} from '../../application/services/receiptService';
 import { OrderInput } from '../../domain/models/order';
 import { CatalogProduct } from '../../domain/models/product';
 import { SPECIES, Species } from '../../domain/models/request';
@@ -34,6 +40,8 @@ import {
   IconTile,
   OrderCategoryChip,
   PawBackdrop,
+  PaymentReceiptCard,
+  PaymentReceiptModal,
   PetAvatar,
   PressableScale,
   PrimaryButton,
@@ -116,6 +124,10 @@ export function CreateOrderScreen({ navigation, route }: Props) {
   }, []);
 
   const [form, setForm] = useState<OrderFormState>(initialSetup.form);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
+    () => parseDigitalReceiptUri(initialSetup.form.comprobanteUrl)?.method ?? 'YAPE_PLIN',
+  );
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [showPetSection, setShowPetSection] = useState<boolean>(initialSetup.showPet);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [hideSuggestions, setHideSuggestions] = useState(false);
@@ -244,48 +256,47 @@ export function CreateOrderScreen({ navigation, route }: Props) {
     }));
   };
 
-  const pickReceiptImage = async (source: 'gallery' | 'camera') => {
-    try {
-      if (source === 'camera') {
-        const perm = await ImagePicker.requestCameraPermissionsAsync();
-        if (!perm.granted) {
-          showToast('error', 'Permiso requerido', 'Autoriza el acceso a la cámara para tomar la foto.');
-          return;
-        }
-        const res = await ImagePicker.launchCameraAsync({
-          mediaTypes: ['images'],
-          quality: 0.7,
-          allowsEditing: true,
-        });
-        if (!res.canceled && res.assets?.[0]?.uri) {
-          setForm((prev) => ({
-            ...prev,
-            comprobanteLocalUri: res.assets[0].uri,
-            comprobanteUrl: undefined,
-          }));
-        }
-      } else {
-        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!perm.granted) {
-          showToast('error', 'Permiso requerido', 'Autoriza el acceso a tus fotos para elegir un comprobante.');
-          return;
-        }
-        const res = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ['images'],
-          quality: 0.7,
-          allowsEditing: true,
-        });
-        if (!res.canceled && res.assets?.[0]?.uri) {
-          setForm((prev) => ({
-            ...prev,
-            comprobanteLocalUri: res.assets[0].uri,
-            comprobanteUrl: undefined,
-          }));
-        }
-      }
-    } catch {
-      showToast('error', 'No se pudo abrir las imágenes', 'Intenta seleccionar otra foto.');
+  const parsedReceipt = useMemo(
+    () => parseDigitalReceiptUri(form.comprobanteUrl),
+    [form.comprobanteUrl],
+  );
+
+  const handleSelectPaymentMethod = (method: PaymentMethod) => {
+    setPaymentMethod(method);
+    if (parsedReceipt) {
+      const updatedUri = buildDigitalReceiptUri({
+        ...parsedReceipt,
+        method,
+      });
+      setForm((prev) => ({
+        ...prev,
+        comprobanteUrl: updatedUri,
+        comprobanteLocalUri: undefined,
+      }));
     }
+  };
+
+  const handleGenerateReceipt = () => {
+    if (!selectedProduct) {
+      showToast('info', 'Elige un producto', 'Selecciona primero un artículo del catálogo.');
+      return;
+    }
+    const uri = buildDigitalReceiptUri({
+      code: parsedReceipt?.code ?? generateReceiptCode(editingId),
+      method: paymentMethod,
+      issuedAt: parsedReceipt?.issuedAt ?? new Date().toISOString(),
+      cashier: fullName(session) || undefined,
+    });
+    setForm((prev) => ({
+      ...prev,
+      comprobanteUrl: uri,
+      comprobanteLocalUri: undefined,
+    }));
+    showToast(
+      'success',
+      'Comprobante generado',
+      'Se adjuntó la boleta digital y se respaldará al guardar el pedido.',
+    );
   };
 
   const handleSave = async () => {
@@ -702,65 +713,86 @@ export function CreateOrderScreen({ navigation, route }: Props) {
               />
 
               <Text style={styles.inputLabel}>Comprobante de pago (opcional)</Text>
-              {form.comprobanteLocalUri || form.comprobanteUrl ? (
-                <View style={styles.receiptPreviewCard}>
-                  <Image
-                    source={{ uri: form.comprobanteLocalUri || form.comprobanteUrl }}
-                    style={styles.receiptThumb}
-                    resizeMode="cover"
+              <View style={styles.paymentMethodsRow}>
+                {PAYMENT_METHODS.map((pm) => {
+                  const active = paymentMethod === pm.value;
+                  return (
+                    <PressableScale
+                      key={pm.value}
+                      onPress={() => handleSelectPaymentMethod(pm.value)}
+                      style={[styles.paymentMethodChip, active && styles.paymentMethodChipActive]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: active }}
+                    >
+                      <Ionicons
+                        name={pm.icon}
+                        size={14}
+                        color={active ? colors.primaryDark : colors.textMuted}
+                      />
+                      <Text
+                        style={[
+                          styles.paymentMethodText,
+                          active && styles.paymentMethodTextActive,
+                        ]}
+                      >
+                        {pm.label}
+                      </Text>
+                    </PressableScale>
+                  );
+                })}
+              </View>
+
+              {parsedReceipt ? (
+                <View style={{ gap: spacing.xs, marginBottom: spacing.xs }}>
+                  <PaymentReceiptCard
+                    receipt={parsedReceipt}
+                    order={{
+                      clienteNombre: form.clienteNombre.trim() || 'Cliente en mostrador',
+                      telefono: form.telefono.trim() || undefined,
+                      mascotaNombre: showPetSection ? form.mascotaNombre.trim() || undefined : undefined,
+                      producto: selectedProduct?.title ?? existing?.producto ?? 'Producto Pet Shop',
+                      sku: selectedProduct?.sku ?? existing?.sku,
+                      cantidad: Math.max(1, parseInt(form.cantidad, 10) || 1),
+                      precio: selectedProduct?.price ?? existing?.precio ?? 0,
+                      registradoPor: fullName(session) || undefined,
+                      synced: false,
+                    }}
+                    compact
+                    onPress={() => setShowReceiptModal(true)}
                   />
-                  <View style={{ flex: 1, gap: 4 }}>
-                    <Text style={styles.receiptReadyTitle}>Comprobante adjunto</Text>
-                    <Text style={styles.receiptReadySub}>
-                      Se guardará junto con el pedido.
-                    </Text>
-                    <View style={styles.receiptActionsRow}>
-                      <PressableScale
-                        onPress={() => pickReceiptImage('gallery')}
-                        style={styles.receiptActionPill}
-                        accessibilityRole="button"
-                      >
-                        <Text style={styles.receiptActionText}>Cambiar</Text>
-                      </PressableScale>
-                      <PressableScale
-                        onPress={() =>
-                          setForm((prev) => ({
-                            ...prev,
-                            comprobanteLocalUri: undefined,
-                            comprobanteUrl: undefined,
-                          }))
-                        }
-                        style={[styles.receiptActionPill, styles.receiptRemovePill]}
-                        accessibilityRole="button"
-                      >
-                        <Text style={styles.receiptRemoveText}>Quitar</Text>
-                      </PressableScale>
-                    </View>
+                  <View style={styles.receiptActionsRow}>
+                    <PressableScale
+                      onPress={() => setShowReceiptModal(true)}
+                      style={styles.receiptActionPill}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.receiptActionText}>Ver boleta completa</Text>
+                    </PressableScale>
+                    <PressableScale
+                      onPress={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          comprobanteLocalUri: undefined,
+                          comprobanteUrl: undefined,
+                        }))
+                      }
+                      style={[styles.receiptActionPill, styles.receiptRemovePill]}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.receiptRemoveText}>Quitar comprobante</Text>
+                    </PressableScale>
                   </View>
                 </View>
               ) : (
-                <View style={styles.receiptButtonsRow}>
-                  <PressableScale
-                    onPress={() => pickReceiptImage('gallery')}
-                    style={styles.receiptPickBtn}
-                    accessibilityRole="button"
-                    accessibilityLabel="Elegir comprobante de galería"
-                    testID="order-receipt-gallery"
-                  >
-                    <Ionicons name="images-outline" size={18} color={colors.primaryDark} />
-                    <Text style={styles.receiptPickText}>Galería</Text>
-                  </PressableScale>
-                  <PressableScale
-                    onPress={() => pickReceiptImage('camera')}
-                    style={styles.receiptPickBtn}
-                    accessibilityRole="button"
-                    accessibilityLabel="Tomar foto del comprobante"
-                    testID="order-receipt-camera"
-                  >
-                    <Ionicons name="camera-outline" size={18} color={colors.primaryDark} />
-                    <Text style={styles.receiptPickText}>Cámara</Text>
-                  </PressableScale>
-                </View>
+                <PrimaryButton
+                  title="Generar comprobante y adjuntar"
+                  onPress={handleGenerateReceipt}
+                  variant="secondary"
+                  icon="receipt-outline"
+                  trailingIcon={null}
+                  compact
+                  testID="order-receipt-generate"
+                />
               )}
             </View>
           </FadeInView>
@@ -806,6 +838,23 @@ export function CreateOrderScreen({ navigation, route }: Props) {
         excludeOrderId={editingId}
         onSelect={handleSelectProduct}
         onClose={() => setPickerVisible(false)}
+      />
+
+      <PaymentReceiptModal
+        visible={showReceiptModal && Boolean(parsedReceipt)}
+        receipt={parsedReceipt}
+        order={{
+          clienteNombre: form.clienteNombre.trim() || 'Cliente en mostrador',
+          telefono: form.telefono.trim() || undefined,
+          mascotaNombre: showPetSection ? form.mascotaNombre.trim() || undefined : undefined,
+          producto: selectedProduct?.title ?? existing?.producto ?? 'Producto Pet Shop',
+          sku: selectedProduct?.sku ?? existing?.sku,
+          cantidad: Math.max(1, parseInt(form.cantidad, 10) || 1),
+          precio: selectedProduct?.price ?? existing?.precio ?? 0,
+          registradoPor: fullName(session) || undefined,
+          synced: false,
+        }}
+        onClose={() => setShowReceiptModal(false)}
       />
 
       <ConfirmDialog
@@ -1182,64 +1231,47 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.xs,
   },
-  receiptButtonsRow: {
+  paymentMethodsRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.xs,
     marginBottom: spacing.sm,
   },
-  receiptPickBtn: {
+  paymentMethodChip: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
-    minHeight: 46,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.surfaceMuted,
-  },
-  receiptPickText: {
-    fontFamily: fonts.semibold,
-    fontSize: 13,
-    color: colors.primaryDark,
-  },
-  receiptPreviewCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    padding: spacing.sm,
+    gap: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surfaceMuted,
-    marginBottom: spacing.sm,
+    backgroundColor: colors.surfaceWarm,
   },
-  receiptThumb: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.sm,
-    backgroundColor: colors.white,
+  paymentMethodChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
   },
-  receiptReadyTitle: {
-    fontFamily: fonts.semibold,
-    fontSize: 13,
-    color: colors.text,
-  },
-  receiptReadySub: {
-    fontFamily: fonts.regular,
+  paymentMethodText: {
+    fontFamily: fonts.medium,
     fontSize: 11.5,
     color: colors.textMuted,
   },
+  paymentMethodTextActive: {
+    fontFamily: fonts.semibold,
+    color: colors.primaryDark,
+  },
   receiptActionsRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     gap: spacing.xs,
     marginTop: 2,
   },
   receiptActionPill: {
     backgroundColor: colors.primarySoft,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: radius.pill,
   },
   receiptActionText: {

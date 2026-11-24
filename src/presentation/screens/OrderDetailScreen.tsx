@@ -1,10 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { calculateOrderTotal, orderShortCode } from '../../application/services/orderService';
+import {
+  buildDigitalReceiptUri,
+  generateReceiptCode,
+  parseDigitalReceiptUri,
+  PAYMENT_METHODS,
+  PaymentMethod,
+} from '../../application/services/receiptService';
 import { ORDER_STATUSES, OrderStatus } from '../../domain/models/order';
 import { findCatalogProductAsset } from '../../infrastructure/services/catalogApiService';
 import {
@@ -16,11 +22,14 @@ import {
   OrderCategoryChip,
   OrderStatusChip,
   PawBackdrop,
+  PaymentReceiptCard,
+  PaymentReceiptModal,
   PetAvatar,
   PressableScale,
   PrimaryButton,
   ScreenHeader,
 } from '../components';
+import { fullName, useAuth } from '../context/AuthContext';
 import { useOrders } from '../context/OrdersContext';
 import { useToast } from '../context/ToastContext';
 import { RootStackParamList } from '../navigation/types';
@@ -34,6 +43,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'OrderDetail'>;
 export function OrderDetailScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { orderId } = route.params;
+  const { session, isAdmin } = useAuth();
   const { getOrderById, updateOrder, changeOrderStatus, deleteOrder, isOnline, syncNow } =
     useOrders();
   const { showToast } = useToast();
@@ -43,10 +53,19 @@ export function OrderDetailScreen({ navigation, route }: Props) {
 
   const order = getOrderById(orderId);
   const receiptUriValue = order ? order.comprobanteUrl || order.comprobanteLocalUri : undefined;
+  const parsedReceipt = useMemo(
+    () => parseDigitalReceiptUri(order?.comprobanteUrl),
+    [order?.comprobanteUrl],
+  );
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('YAPE_PLIN');
+  const [generatingReceipt, setGeneratingReceipt] = useState(false);
 
   useEffect(() => {
     setReceiptLoadError(false);
-  }, [receiptUriValue]);
+    if (parsedReceipt?.method) {
+      setPaymentMethod(parsedReceipt.method);
+    }
+  }, [receiptUriValue, parsedReceipt?.method]);
 
   if (!order) {
     return (
@@ -93,6 +112,15 @@ export function OrderDetailScreen({ navigation, route }: Props) {
   };
 
   const handleDelete = async () => {
+    if (!isAdmin && order.userId && session?.uid && order.userId !== session.uid) {
+      setConfirmDelete(false);
+      showToast(
+        'info',
+        'Permiso requerido',
+        'Solo quien registró este pedido o el Director Médico puede eliminarlo.',
+      );
+      return;
+    }
     try {
       await deleteOrder(order.id);
       showToast('info', 'Pedido eliminado', `Se eliminó ${order.producto}.`);
@@ -146,43 +174,29 @@ export function OrderDetailScreen({ navigation, route }: Props) {
   const isSynced = order.syncStatus === 'SYNCED';
   const receiptUri = order.comprobanteUrl || order.comprobanteLocalUri;
 
-  const pickReceiptAndSave = async (source: 'gallery' | 'camera') => {
+  const generateAndSaveReceipt = async (overrideMethod?: PaymentMethod) => {
+    const chosenMethod = overrideMethod ?? paymentMethod;
+    setGeneratingReceipt(true);
     try {
-      let uri: string | undefined;
-      if (source === 'camera') {
-        const perm = await ImagePicker.requestCameraPermissionsAsync();
-        if (!perm.granted) {
-          showToast('error', 'Permiso requerido', 'Autoriza la cámara para tomar la foto.');
-          return;
-        }
-        const res = await ImagePicker.launchCameraAsync({
-          mediaTypes: ['images'],
-          quality: 0.7,
-          allowsEditing: true,
-        });
-        if (!res.canceled) uri = res.assets?.[0]?.uri;
-      } else {
-        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!perm.granted) {
-          showToast('error', 'Permiso requerido', 'Autoriza tus fotos para adjuntar el comprobante.');
-          return;
-        }
-        const res = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ['images'],
-          quality: 0.7,
-          allowsEditing: true,
-        });
-        if (!res.canceled) uri = res.assets?.[0]?.uri;
-      }
-
-      if (!uri) return;
-      await updateOrder(order.id, {
-        comprobanteLocalUri: uri,
-        comprobanteUrl: undefined,
+      const uri = buildDigitalReceiptUri({
+        code: parsedReceipt?.code ?? generateReceiptCode(order.id),
+        method: chosenMethod,
+        issuedAt: parsedReceipt?.issuedAt ?? new Date().toISOString(),
+        cashier: fullName(session) || order.registradoPor || undefined,
       });
-      showToast('success', 'Comprobante adjunto', 'Se guardó la imagen del comprobante.');
+      await updateOrder(order.id, {
+        comprobanteUrl: uri,
+        comprobanteLocalUri: undefined,
+      });
+      showToast(
+        'success',
+        'Comprobante emitido y guardado',
+        'La boleta digital quedó registrada y sincronizada con el pedido.',
+      );
     } catch {
-      showToast('error', 'Error', 'No se pudo adjuntar la imagen.');
+      showToast('error', 'Error', 'No se pudo generar el comprobante.');
+    } finally {
+      setGeneratingReceipt(false);
     }
   };
 
@@ -238,6 +252,7 @@ export function OrderDetailScreen({ navigation, route }: Props) {
                 </View>
                 <Text style={styles.registeredSub}>
                   Registrado {formatRelative(order.fechaRegistro)}
+                  {order.registradoPor ? ` · Por ${order.registradoPor}` : ''}
                 </Text>
               </View>
             </View>
@@ -443,7 +458,74 @@ export function OrderDetailScreen({ navigation, route }: Props) {
               <Text style={typography.heading}>Comprobante de pago</Text>
             </View>
 
-            {receiptUri ? (
+            {parsedReceipt ? (
+              <View style={styles.receiptBox}>
+                <PaymentReceiptCard
+                  receipt={parsedReceipt}
+                  order={{
+                    clienteNombre: order.clienteNombre,
+                    telefono: order.telefono,
+                    mascotaNombre: order.mascotaNombre,
+                    producto: order.producto,
+                    sku: skuLabel,
+                    cantidad: order.cantidad,
+                    precio: order.precio,
+                    registradoPor: order.registradoPor,
+                    synced: isSynced,
+                  }}
+                  compact
+                  onPress={() => setShowReceiptModal(true)}
+                />
+
+                <View style={styles.paymentMethodsRow}>
+                  {PAYMENT_METHODS.map((pm) => {
+                    const active = parsedReceipt.method === pm.value;
+                    return (
+                      <PressableScale
+                        key={pm.value}
+                        onPress={() => {
+                          setPaymentMethod(pm.value);
+                          if (!active) void generateAndSaveReceipt(pm.value);
+                        }}
+                        style={[
+                          styles.paymentMethodChip,
+                          active && styles.paymentMethodChipActive,
+                        ]}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: active }}
+                      >
+                        <Ionicons
+                          name={pm.icon}
+                          size={13}
+                          color={active ? colors.primaryDark : colors.textMuted}
+                        />
+                        <Text
+                          style={[
+                            styles.paymentMethodText,
+                            active && styles.paymentMethodTextActive,
+                          ]}
+                        >
+                          {pm.label}
+                        </Text>
+                      </PressableScale>
+                    );
+                  })}
+                </View>
+
+                <View style={styles.receiptMetaRow}>
+                  <Text style={styles.receiptCaption}>
+                    Toca la boleta para ampliar o enviar al cliente
+                  </Text>
+                  <PressableScale
+                    onPress={() => setShowReceiptModal(true)}
+                    style={styles.receiptChangeBtn}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.receiptChangeText}>Ver boleta</Text>
+                  </PressableScale>
+                </View>
+              </View>
+            ) : receiptUri ? (
               <View style={styles.receiptBox}>
                 {receiptLoadError ? (
                   <View style={styles.receiptOfflineBox}>
@@ -472,38 +554,59 @@ export function OrderDetailScreen({ navigation, route }: Props) {
                     {receiptLoadError ? 'Guardado en la nube' : 'Toca la imagen para ampliar'}
                   </Text>
                   <PressableScale
-                    onPress={() => pickReceiptAndSave('gallery')}
+                    onPress={() => generateAndSaveReceipt()}
                     style={styles.receiptChangeBtn}
                     accessibilityRole="button"
                   >
-                    <Text style={styles.receiptChangeText}>Cambiar comprobante</Text>
+                    <Text style={styles.receiptChangeText}>Generar boleta digital</Text>
                   </PressableScale>
                 </View>
               </View>
             ) : (
               <View style={styles.receiptEmptyWrap}>
                 <Text style={styles.receiptEmptyText}>
-                  Aún no se adjuntó comprobante de pago o entrega.
+                  Selecciona el medio de pago y emite el comprobante digital del pedido.
                 </Text>
-                <View style={styles.receiptBtnsRow}>
-                  <PrimaryButton
-                    title="Adjuntar comprobante"
-                    onPress={() => pickReceiptAndSave('gallery')}
-                    variant="secondary"
-                    icon="images-outline"
-                    trailingIcon={null}
-                    compact
-                    style={{ flex: 1 }}
-                  />
-                  <PrimaryButton
-                    title="Cámara"
-                    onPress={() => pickReceiptAndSave('camera')}
-                    variant="outline"
-                    icon="camera-outline"
-                    trailingIcon={null}
-                    compact
-                  />
+                <View style={styles.paymentMethodsRow}>
+                  {PAYMENT_METHODS.map((pm) => {
+                    const active = paymentMethod === pm.value;
+                    return (
+                      <PressableScale
+                        key={pm.value}
+                        onPress={() => setPaymentMethod(pm.value)}
+                        style={[
+                          styles.paymentMethodChip,
+                          active && styles.paymentMethodChipActive,
+                        ]}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: active }}
+                      >
+                        <Ionicons
+                          name={pm.icon}
+                          size={14}
+                          color={active ? colors.primaryDark : colors.textMuted}
+                        />
+                        <Text
+                          style={[
+                            styles.paymentMethodText,
+                            active && styles.paymentMethodTextActive,
+                          ]}
+                        >
+                          {pm.label}
+                        </Text>
+                      </PressableScale>
+                    );
+                  })}
                 </View>
+                <PrimaryButton
+                  title="Generar comprobante y guardar"
+                  onPress={() => generateAndSaveReceipt()}
+                  loading={generatingReceipt}
+                  variant="secondary"
+                  icon="receipt-outline"
+                  trailingIcon={null}
+                  compact
+                />
               </View>
             )}
           </View>
@@ -566,39 +669,58 @@ export function OrderDetailScreen({ navigation, route }: Props) {
         onConfirm={handleDelete}
       />
 
-      <Modal
-        visible={showReceiptModal && Boolean(receiptUri)}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowReceiptModal(false)}
-      >
-        <View style={styles.receiptModalBackdrop}>
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setShowReceiptModal(false)}
-          />
-          <View style={styles.receiptModalCard}>
-            <View style={styles.receiptModalHeader}>
-              <Text style={styles.receiptModalTitle}>Comprobante {orderShortCode(order.id)}</Text>
-              <PressableScale
-                onPress={() => setShowReceiptModal(false)}
-                style={styles.receiptModalClose}
-                accessibilityRole="button"
-                accessibilityLabel="Cerrar vista del comprobante"
-              >
-                <Ionicons name="close" size={20} color={colors.text} />
-              </PressableScale>
+      {parsedReceipt ? (
+        <PaymentReceiptModal
+          visible={showReceiptModal}
+          receipt={parsedReceipt}
+          order={{
+            clienteNombre: order.clienteNombre,
+            telefono: order.telefono,
+            mascotaNombre: order.mascotaNombre,
+            producto: order.producto,
+            sku: skuLabel,
+            cantidad: order.cantidad,
+            precio: order.precio,
+            registradoPor: order.registradoPor,
+            synced: isSynced,
+          }}
+          onClose={() => setShowReceiptModal(false)}
+        />
+      ) : (
+        <Modal
+          visible={showReceiptModal && Boolean(receiptUri)}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowReceiptModal(false)}
+        >
+          <View style={styles.receiptModalBackdrop}>
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => setShowReceiptModal(false)}
+            />
+            <View style={styles.receiptModalCard}>
+              <View style={styles.receiptModalHeader}>
+                <Text style={styles.receiptModalTitle}>Comprobante {orderShortCode(order.id)}</Text>
+                <PressableScale
+                  onPress={() => setShowReceiptModal(false)}
+                  style={styles.receiptModalClose}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cerrar vista del comprobante"
+                >
+                  <Ionicons name="close" size={20} color={colors.text} />
+                </PressableScale>
+              </View>
+              {receiptUri && (
+                <Image
+                  source={{ uri: receiptUri }}
+                  style={styles.receiptFullImage}
+                  resizeMode="contain"
+                />
+              )}
             </View>
-            {receiptUri && (
-              <Image
-                source={{ uri: receiptUri }}
-                style={styles.receiptFullImage}
-                resizeMode="contain"
-              />
-            )}
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }
@@ -837,7 +959,37 @@ const styles = StyleSheet.create({
   receiptChangeText: { fontFamily: fonts.semibold, fontSize: 12, color: colors.primaryDark },
   receiptEmptyWrap: { gap: spacing.sm, marginTop: spacing.xs },
   receiptEmptyText: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
-  receiptBtnsRow: { flexDirection: 'row', gap: spacing.xs },
+  paymentMethodsRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginTop: 2,
+  },
+  paymentMethodChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceWarm,
+  },
+  paymentMethodChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
+  },
+  paymentMethodText: {
+    fontFamily: fonts.medium,
+    fontSize: 11.5,
+    color: colors.textMuted,
+  },
+  paymentMethodTextActive: {
+    fontFamily: fonts.semibold,
+    color: colors.primaryDark,
+  },
   receiptModalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.72)',

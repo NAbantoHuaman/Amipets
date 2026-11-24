@@ -23,6 +23,7 @@ import {
   ServiceChip,
   StatusChip,
 } from '../components';
+import { useAuth } from '../context/AuthContext';
 import { useRequests } from '../context/RequestsContext';
 import { useToast } from '../context/ToastContext';
 import { Priority, RequestStatus, REQUEST_STATUSES } from '../../domain/models/request';
@@ -44,6 +45,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'RequestDetail'>;
 export function RequestDetailScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { requestId } = route.params;
+  const { session, isAdmin } = useAuth();
   const { getRequestById, changeStatus, updateRequest, deleteRequest, servicePrices } = useRequests();
   const { showToast } = useToast();
 
@@ -110,6 +112,15 @@ export function RequestDetailScreen({ navigation, route }: Props) {
   };
 
   const handleDelete = () => {
+    if (!isAdmin && request.userId && session?.uid && request.userId !== session.uid) {
+      setConfirmDelete(false);
+      showToast(
+        'info',
+        'Permiso requerido',
+        'Solo quien registró esta solicitud o el Director Médico puede eliminarla.',
+      );
+      return;
+    }
     deleteRequest(request.id);
     showToast('info', 'Solicitud eliminada', `Se retiró la atención de ${request.mascotaNombre}.`);
     setConfirmDelete(false);
@@ -182,6 +193,7 @@ export function RequestDetailScreen({ navigation, route }: Props) {
                 <Text style={styles.petSpeciesSubtitle}>
                   {species?.label ?? 'Mascota'}
                   {request.raza ? ` · ${request.raza}` : ''} · Registrado {formatRelative(request.fechaRegistro)}
+                  {request.registradoPor ? ` · Por ${request.registradoPor}` : ''}
                 </Text>
               </View>
             </View>

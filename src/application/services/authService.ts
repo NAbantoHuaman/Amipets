@@ -1,6 +1,36 @@
 import { RegisterUserInput, Session, User, UserRole } from '../../domain/models/user';
 
 export const CLINIC_NAME = 'Clínica Veterinaria Amipets';
+export const DESIGNATED_ADMIN_UID = 'W3phAvrPASa8SYWuw34LVwejoGy2';
+export const DESIGNATED_ADMIN_EMAIL = 'admin@amipets.pe';
+
+export function isDesignatedAdminAccount(email?: string | null, uid?: string | null): boolean {
+  const cleanEmail = (email ?? '').trim().toLowerCase();
+  if (uid && uid === DESIGNATED_ADMIN_UID) return true;
+  if (cleanEmail === DESIGNATED_ADMIN_EMAIL) return true;
+  return false;
+}
+
+export function buildUnifiedRoleFields(roleCode: UserRole, shiftText: string) {
+  const cfg = ROLE_CONFIGS[roleCode] ?? ROLE_CONFIGS.RECEPTIONIST;
+  const cmpvPrefix =
+    roleCode === 'ADMIN'
+      ? 'Dirección Médica'
+      : roleCode === 'VETERINARIAN'
+      ? 'Consultorio Médico'
+      : roleCode === 'ASSISTANT'
+      ? 'Triaje Clínico'
+      : 'Recepción';
+
+  return {
+    role: roleCode,
+    roleLabel: cfg.defaultRoleDescription,
+    title: cfg.defaultTitle,
+    clinicName: CLINIC_NAME,
+    cmpv: `${cmpvPrefix} · ${shiftText}`,
+    shift: shiftText,
+  };
+}
 
 export interface RoleConfig {
   role: UserRole;

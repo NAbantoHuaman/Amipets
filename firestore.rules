@@ -4,25 +4,35 @@ rules_version = '2';
 // Assumed Data Model
 // ===============================================================
 //
-// This security rules file assumes the following Firestore collections:
+// This security rules file assumes an internal veterinary clinic
+// workflow (Clínica Veterinaria Amipets) where all authenticated
+// accounts are clinic staff (Receptionists, Veterinarians,
+// Assistants, and designated Medical Director / Admin).
 //
 // Collection: users
 // Document ID: {userId} (must match authenticated Firebase Auth UID)
+// Access: Readable by all signed-in clinic staff (for shared
+//         "Equipo clínico" roster); writable only by the owner.
 // Fields:
 //   - displayName: string (required, 1..80 chars)
 //   - email: string (required, 3..120 chars)
-//   - role: string (optional, 'ADMIN' | 'RECEPTIONIST'; self-assignment of 'ADMIN' is blocked)
+//   - role: string (optional, 'ADMIN' | 'VETERINARIAN' | 'RECEPTIONIST' | 'ASSISTANT'; self-assignment of 'ADMIN' is blocked for non-admins)
 //   - roleLabel: string (optional, 0..80 chars)
 //   - title: string (optional, 0..30 chars)
 //   - clinicName: string (optional, 0..100 chars)
 //   - cmpv: string (optional, 0..100 chars)
 //   - shift: string (optional, 0..80 chars)
 //   - createdAt: string (<= 40 chars) or timestamp (optional, immutable once set)
+//   - updatedAt: string (optional, 0..40 chars)
 //
-// Collection: orders
+// Collection: orders (Shared clinic store orders queue)
 // Document ID: {orderId}
+// Access: Readable by all signed-in clinic staff; created with
+//         creator's own userId; updatable by any signed-in staff
+//         while preserving original creator userId; deletable by
+//         original creator or Admin.
 // Fields:
-//   - userId: string (required, immutable, must equal request.auth.uid)
+//   - userId: string (required, 1..128 chars, immutable creator UID; must equal request.auth.uid on create)
 //   - clienteNombre: string (required, 2..80 chars)
 //   - producto: string (required, 2..120 chars)
 //   - categoria: string (required, 'ALIMENTO' | 'ACCESORIOS' | 'ROPA' | 'JUGUETES')
@@ -44,6 +54,50 @@ rules_version = '2';
 //   - updatedAt: string | null (optional, 0..40 chars)
 //   - syncedAt: string | null (optional, 0..40 chars)
 //
+// Collection: requests (Shared clinical service requests queue)
+// Document ID: {requestId}
+// Access: Readable by all signed-in clinic staff; created with
+//         creator's own userId; updatable by any signed-in staff
+//         while preserving original creator userId; deletable by
+//         original creator or Admin.
+// Fields:
+//   - userId: string (required, 1..128 chars, immutable creator UID; must equal request.auth.uid on create)
+//   - clienteNombre: string (required, 2..80 chars)
+//   - telefono: string (required, 1..30 chars)
+//   - mascotaNombre: string (required, 1..60 chars)
+//   - tipoServicio: string (required, 'CONSULTA' | 'VACUNACION' | 'EMERGENCIA' | 'GROOMING')
+//   - prioridad: string (required, 'BAJA' | 'MEDIA' | 'ALTA' | 'URGENTE')
+//   - descripcion: string (required, 0..400 chars; empty string "" allowed)
+//   - estado: string (required, 'PENDIENTE' | 'EN_ATENCION' | 'FINALIZADO')
+//   - fechaRegistro: string (required, 8..40 chars)
+//   - id: string (optional, 0..80 chars)
+//   - especie: string | null (optional, 'PERRO' | 'GATO' | 'CONEJO' | 'OTRO')
+//   - raza: string | null (optional, 0..80 chars)
+//   - registradoPor: string | null (optional, 0..100 chars)
+//   - registradoPorUsuario: string | null (optional, 0..100 chars)
+//   - updatedAt: string | null (optional, 0..40 chars)
+//   - syncedAt: string | null (optional, 0..40 chars)
+//
+// Collection: clinic_settings (Shared official clinic service tariff)
+// Document ID: main (singleton document: docId == 'main')
+// Access: Readable by all signed-in clinic staff; writable and
+//         deletable exclusively by Admin.
+// Fields:
+//   - servicePrices: map (required, exact keys: CONSULTA, VACUNACION, EMERGENCIA, GROOMING; each number 0..50000)
+//   - updatedAt: string (required, 8..40 chars)
+//   - updatedBy: string | null (optional, 0..100 chars)
+//
+// Collection: user_settings (Per-user alert preferences & read notifications)
+// Document ID: {userId} (must match authenticated Firebase Auth UID)
+// Access: Strictly owner-only read and write.
+// Fields:
+//   - userId: string (required, immutable, must equal {userId} and request.auth.uid)
+//   - servicePrices: map (required, exact keys: CONSULTA, VACUNACION, EMERGENCIA, GROOMING; each number 0..50000)
+//   - prefs: map (required, exact keys: notifyUrgent, soundAlerts, vaccineReminders; each bool)
+//   - readIds: list (required, <= 300 items, string notification IDs)
+//   - updatedAt: string (required, 8..40 chars)
+//   - syncedAt: string | null (optional, 0..40 chars)
+//
 // ===============================================================
 
 service cloud.firestore {
@@ -63,10 +117,14 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Check trusted admin authority from Firebase Auth custom claims only
+    // Check trusted admin authority from Firebase Auth custom claims or designated clinic admin identity
     function isAdmin() {
-      return isSignedIn() &&
-             (request.auth.token.admin == true || request.auth.token.role == 'ADMIN');
+      return isSignedIn() && (
+        ('admin' in request.auth.token && request.auth.token.admin == true) ||
+        ('role' in request.auth.token && request.auth.token.role == 'ADMIN') ||
+        request.auth.uid == 'W3phAvrPASa8SYWuw34LVwejoGy2' ||
+        ('email' in request.auth.token && request.auth.token.email == 'admin@amipets.pe')
+      );
     }
 
     // Ensure userId matches authenticated UID on create
@@ -116,9 +174,14 @@ service cloud.firestore {
       return value is int && value >= minVal && value <= maxVal;
     }
 
-    // Validate number strictly greater than minVal and <= maxVal
+    // Validate number strictly greater than 0 and <= maxVal
     function isValidPositiveNumber(value, maxVal) {
       return value is number && value > 0 && value <= maxVal;
+    }
+
+    // Validate non-negative number within [0, maxVal]
+    function isValidNonNegativeNumber(value, maxVal) {
+      return value is number && value >= 0 && value <= maxVal;
     }
 
     // ===============================================================
@@ -136,11 +199,14 @@ service cloud.firestore {
                'clinicName',
                'cmpv',
                'shift',
-               'createdAt'
+               'createdAt',
+               'updatedAt'
              ]) &&
              isNonEmptyString(data.displayName, 1, 80) &&
              isNonEmptyString(data.email, 3, 120) &&
-             (!('role' in data) || (data.role is string && data.role in ['ADMIN', 'RECEPTIONIST'])) &&
+             (!('role' in data) ||
+              (data.role is string &&
+               data.role in ['ADMIN', 'VETERINARIAN', 'RECEPTIONIST', 'ASSISTANT'])) &&
              isValidOptionalString(data, 'roleLabel', 80) &&
              isValidOptionalString(data, 'title', 30) &&
              isValidOptionalString(data, 'clinicName', 100) &&
@@ -148,12 +214,13 @@ service cloud.firestore {
              isValidOptionalString(data, 'shift', 80) &&
              (!('createdAt' in data) ||
               data.createdAt is timestamp ||
-              (data.createdAt is string && data.createdAt.size() <= 40));
+              (data.createdAt is string && data.createdAt.size() <= 40)) &&
+             isValidOptionalString(data, 'updatedAt', 40);
     }
 
     function canCreateUserRole(data) {
       return !('role' in data) ||
-             data.role == 'RECEPTIONIST' ||
+             data.role in ['RECEPTIONIST', 'VETERINARIAN', 'ASSISTANT'] ||
              isAdmin();
     }
 
@@ -168,10 +235,11 @@ service cloud.firestore {
         (!('role' in request.resource.data) && !('role' in resource.data)) ||
         (('role' in resource.data) &&
          ('role' in request.resource.data) &&
-         request.resource.data.role == resource.data.role) ||
+         request.resource.data.role == resource.data.role &&
+         request.resource.data.role != 'ADMIN') ||
         (!('role' in resource.data) &&
          ('role' in request.resource.data) &&
-         request.resource.data.role == 'RECEPTIONIST');
+         request.resource.data.role in ['RECEPTIONIST', 'VETERINARIAN', 'ASSISTANT']);
 
       return createdAtUnchanged && roleSafe;
     }
@@ -210,8 +278,7 @@ service cloud.firestore {
                'updatedAt',
                'syncedAt'
              ]) &&
-             data.userId is string &&
-             data.userId == request.auth.uid &&
+             isNonEmptyString(data.userId, 1, 128) &&
              isNonEmptyString(data.clienteNombre, 2, 80) &&
              isNonEmptyString(data.producto, 2, 120) &&
              data.categoria is string &&
@@ -240,12 +307,126 @@ service cloud.firestore {
              isValidNullableString(data, 'syncedAt', 40);
     }
 
+    function isValidRequest(data) {
+      return hasRequiredFields(data, [
+               'userId',
+               'clienteNombre',
+               'telefono',
+               'mascotaNombre',
+               'tipoServicio',
+               'prioridad',
+               'descripcion',
+               'estado',
+               'fechaRegistro'
+             ]) &&
+             hasOnlyAllowedFields(data, [
+               'userId',
+               'clienteNombre',
+               'telefono',
+               'mascotaNombre',
+               'especie',
+               'raza',
+               'tipoServicio',
+               'prioridad',
+               'descripcion',
+               'estado',
+               'fechaRegistro',
+               'id',
+               'registradoPor',
+               'registradoPorUsuario',
+               'updatedAt',
+               'syncedAt'
+             ]) &&
+             isNonEmptyString(data.userId, 1, 128) &&
+             isNonEmptyString(data.clienteNombre, 2, 80) &&
+             isNonEmptyString(data.telefono, 1, 30) &&
+             isNonEmptyString(data.mascotaNombre, 1, 60) &&
+             data.tipoServicio is string &&
+             data.tipoServicio in ['CONSULTA', 'VACUNACION', 'EMERGENCIA', 'GROOMING'] &&
+             data.prioridad is string &&
+             data.prioridad in ['BAJA', 'MEDIA', 'ALTA', 'URGENTE'] &&
+             data.descripcion is string &&
+             data.descripcion.size() <= 400 &&
+             data.estado is string &&
+             data.estado in ['PENDIENTE', 'EN_ATENCION', 'FINALIZADO'] &&
+             isNonEmptyString(data.fechaRegistro, 8, 40) &&
+             isValidOptionalString(data, 'id', 80) &&
+             (!('especie' in data) ||
+              data.especie == null ||
+              (data.especie is string && data.especie in ['PERRO', 'GATO', 'CONEJO', 'OTRO'])) &&
+             isValidNullableString(data, 'raza', 80) &&
+             isValidNullableString(data, 'registradoPor', 100) &&
+             isValidNullableString(data, 'registradoPorUsuario', 100) &&
+             isValidNullableString(data, 'updatedAt', 40) &&
+             isValidNullableString(data, 'syncedAt', 40);
+    }
+
+    function isValidServicePrices(prices) {
+      let allowedKeys = ['CONSULTA', 'VACUNACION', 'EMERGENCIA', 'GROOMING'];
+      return prices is map &&
+             prices.keys().hasAll(allowedKeys) &&
+             prices.keys().hasOnly(allowedKeys) &&
+             isValidNonNegativeNumber(prices.CONSULTA, 50000) &&
+             isValidNonNegativeNumber(prices.VACUNACION, 50000) &&
+             isValidNonNegativeNumber(prices.EMERGENCIA, 50000) &&
+             isValidNonNegativeNumber(prices.GROOMING, 50000);
+    }
+
+    function isValidClinicSettings(data) {
+      return hasRequiredFields(data, ['servicePrices', 'updatedAt']) &&
+             hasOnlyAllowedFields(data, ['servicePrices', 'updatedAt', 'updatedBy']) &&
+             isValidServicePrices(data.servicePrices) &&
+             isNonEmptyString(data.updatedAt, 8, 40) &&
+             isValidNullableString(data, 'updatedBy', 100);
+    }
+
+    function isValidUserPrefs(prefs) {
+      let allowedKeys = ['notifyUrgent', 'soundAlerts', 'vaccineReminders'];
+      return prefs is map &&
+             prefs.keys().hasAll(allowedKeys) &&
+             prefs.keys().hasOnly(allowedKeys) &&
+             prefs.notifyUrgent is bool &&
+             prefs.soundAlerts is bool &&
+             prefs.vaccineReminders is bool;
+    }
+
+    function isValidUserSettings(data, userId) {
+      return hasRequiredFields(data, [
+               'userId',
+               'servicePrices',
+               'prefs',
+               'readIds',
+               'updatedAt'
+             ]) &&
+             hasOnlyAllowedFields(data, [
+               'userId',
+               'servicePrices',
+               'prefs',
+               'readIds',
+               'updatedAt',
+               'syncedAt'
+             ]) &&
+             data.userId is string &&
+             data.userId == userId &&
+             isValidServicePrices(data.servicePrices) &&
+             isValidUserPrefs(data.prefs) &&
+             data.readIds is list &&
+             data.readIds.size() <= 300 &&
+             (data.readIds.size() == 0 ||
+              (data.readIds[0] is string &&
+               data.readIds[0].size() <= 120 &&
+               data.readIds[data.readIds.size() - 1] is string &&
+               data.readIds[data.readIds.size() - 1].size() <= 120)) &&
+             isNonEmptyString(data.updatedAt, 8, 40) &&
+             isValidNullableString(data, 'syncedAt', 40);
+    }
+
     // ===============================================================
     // Collection Rules
     // ===============================================================
 
     match /users/{userId} {
-      allow read: if isOwner(userId);
+      allow read: if isSignedIn();
       allow create: if isOwner(userId) &&
                        isValidUser(request.resource.data) &&
                        canCreateUserRole(request.resource.data);
@@ -256,16 +437,44 @@ service cloud.firestore {
     }
 
     match /orders/{orderId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn();
       allow create: if isSignedIn() &&
-                       uidUnchanged() &&
+                       request.resource.data.userId == request.auth.uid &&
                        isValidOrder(request.resource.data);
       allow update: if isSignedIn() &&
-                       resource.data.userId == request.auth.uid &&
-                       uidNotModified() &&
                        request.resource.data.userId == resource.data.userId &&
                        isValidOrder(request.resource.data);
-      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() &&
+                       (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /requests/{requestId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       isValidRequest(request.resource.data);
+      allow update: if isSignedIn() &&
+                       request.resource.data.userId == resource.data.userId &&
+                       isValidRequest(request.resource.data);
+      allow delete: if isSignedIn() &&
+                       (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /clinic_settings/{docId} {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin() &&
+                               docId == 'main' &&
+                               isValidClinicSettings(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /user_settings/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) &&
+                       isValidUserSettings(request.resource.data, userId);
+      allow update: if isOwner(userId) &&
+                       isValidUserSettings(request.resource.data, userId);
+      allow delete: if isOwner(userId);
     }
 
     // Default deny all other collections and subcollections

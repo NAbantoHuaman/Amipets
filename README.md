@@ -48,9 +48,11 @@ Con la aplicación móvil, el equipo autenticado trabaja siempre sobre una inter
 
 ## Configuración del Entorno y Credenciales de Firebase (Variables de Entorno)
 
-La aplicación utiliza **Firebase Authentication**, **Cloud Firestore** y **Cloud Storage** mediante variables públicas de Expo (`EXPO_PUBLIC_*`). Por seguridad, el archivo `.env` local está excluido del repositorio en `.gitignore` y se distribuye únicamente la plantilla `.env.example`.
+La aplicación utiliza **Firebase Authentication**, **Cloud Firestore** y **Cloud Storage** mediante variables públicas de Expo (`EXPO_PUBLIC_*`).
 
-### 1. Crear el archivo `.env` desde la plantilla
+> **Inicio inmediato sin configuración adicional:** `src/infrastructure/services/firebaseConfig.ts` ya incluye como respaldo automático la configuración pública del proyecto `amipets-d469c` (la misma declarada en `eas.json` y protegida por `firestore.rules` y `storage.rules`). Por ello, al clonar el repositorio basta ejecutar `npm install` y `npx expo start` para que el aplicativo levante directamente sin requerir un archivo `.env` manual.
+
+### 1. (Opcional) Sobrescribir con un archivo `.env` propio
 En la raíz del proyecto, copia `.env.example` hacia `.env`:
 
 ```powershell
@@ -110,8 +112,8 @@ Las APIs externas integradas para catálogo (`dummyjson.com`), clima (`api.open-
    npm install
    ```
 
-3. **Configurar las variables de entorno:**
-   Crea `.env` a partir de `.env.example` siguiendo los pasos de la sección anterior.
+3. *(Opcional)* **Variables de entorno personalizadas:**
+   El proyecto levanta de forma directa tras `npm install` gracias a los valores por defecto en `firebaseConfig.ts`. Solo necesitas crear `.env` desde `.env.example` si deseas apuntar a otro proyecto de Firebase.
 
 4. **Verificar compilación TypeScript:**
    ```powershell

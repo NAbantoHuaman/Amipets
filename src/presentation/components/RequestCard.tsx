@@ -19,6 +19,7 @@ function RequestCardBase({ request, onPress }: Props) {
   const service = SERVICE_META[request.tipoServicio];
   const isUrgent = request.prioridad === 'URGENTE' && request.estado !== 'FINALIZADO';
   const isDone = request.estado === 'FINALIZADO';
+  const isSynced = request.syncStatus === 'SYNCED';
 
   return (
     <PressableScale
@@ -50,14 +51,26 @@ function RequestCardBase({ request, onPress }: Props) {
 
         <View style={styles.bottomRow}>
           <View style={styles.dateRow}>
-            <Ionicons name="time-outline" size={12} color={colors.textMuted} />
+            <Ionicons
+              name={isSynced ? 'cloud-done-outline' : 'cloud-upload-outline'}
+              size={12}
+              color={isSynced ? colors.done : colors.pending}
+            />
             <Text style={styles.date} numberOfLines={1}>
               {formatRelative(request.fechaRegistro)} · {formatTime(request.fechaRegistro)}
-              {request.registradoPor ? ` · ${request.registradoPor}` : ''}
             </Text>
           </View>
           <StatusChip status={request.estado} />
         </View>
+
+        {request.registradoPor ? (
+          <View style={styles.authorTag}>
+            <Ionicons name="id-card-outline" size={11} color={colors.primaryDark} />
+            <Text style={styles.authorTagText} numberOfLines={1}>
+              Atendido por: {request.registradoPor}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
@@ -96,4 +109,20 @@ const styles = StyleSheet.create({
   bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.xs, marginTop: 2 },
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
   date: { fontFamily: fonts.regular, fontSize: 11, color: colors.textMuted },
+  authorTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    marginTop: 3,
+  },
+  authorTagText: {
+    fontFamily: fonts.medium,
+    fontSize: 10.5,
+    color: colors.primaryDark,
+  },
 });

@@ -28,7 +28,6 @@ import {
   PrimaryButton,
   SearchBar,
 } from '../components';
-import { useAuth, shortGreetingName } from '../context/AuthContext';
 import { useOrders } from '../context/OrdersContext';
 import { RootStackParamList, TabParamList } from '../navigation/types';
 import { colors, common, fonts, radius, spacing, typography } from '../theme';
@@ -43,7 +42,6 @@ type StatusFilter = OrderStatus | 'TODOS';
 type CategoryFilter = OrderCategory | 'TODAS';
 
 export function OrdersScreen({ navigation, route }: Props) {
-  const { session } = useAuth();
   const {
     orders,
     loading,
@@ -192,9 +190,7 @@ export function OrdersScreen({ navigation, route }: Props) {
         <FadeInView delay={30} distance={8}>
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.headerSubtitle}>
-                Historial de {shortGreetingName(session) || 'tu cuenta'}
-              </Text>
+              <Text style={styles.headerSubtitle}>Mostrador y Pet Shop</Text>
               <Text style={typography.title} accessibilityRole="header">
                 Pedidos
               </Text>
